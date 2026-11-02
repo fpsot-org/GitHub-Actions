@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# On a pull request, fails unless GitHub verified the signature of every commit (VCS-001).
+# Squash merges then put one GitHub-signed commit on main for a pull request whose
+# commits were all signed by their authors.
+name: signed-commits
+on:
+  workflow_call:
+    inputs:
+      tools-ref:
+        description: Ref of fpsot-org/GitHub-Actions to take the script from.
+        type: string
+        default: v0
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - name: Check every commit is signed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: bash .fpsot-tools/scripts/check-pr-commits-signed.sh "$PR"
