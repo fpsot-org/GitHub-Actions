@@ -1,0 +1,5 @@
+= Bad order
+
+Each {abbr-api} call is short.
+
+The {abbr-api-first} comes too late.
