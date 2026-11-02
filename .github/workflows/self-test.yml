@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, edited, synchronize, reopened]
 permissions:
   contents: read
 jobs:
@@ -47,3 +48,12 @@ jobs:
       prefix: TST
       working-directory: testdata/spec-good
       tools-ref: ${{ github.sha }}
+  pr-title:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/pr-title.yml
+    permissions:
+      pull-requests: read
+  diagrams-fixture:
+    uses: ./.github/workflows/diagrams.yml
+    with:
+      working-directory: testdata/spec-good

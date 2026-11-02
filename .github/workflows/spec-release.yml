@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Runs when a spec repo pushes a release tag. Checks that the tag is a signed,
+# annotated vX.Y.Z tag, then runs spec-check in strict mode: every page must exist
+# in English and French, and no French page may still be marked as pending.
+# The notification to the website is added later.
+name: spec-release
+on:
+  workflow_call:
+    inputs:
+      prefix:
+        description: Requirement ID prefix, three upper-case letters.
+        type: string
+        required: true
+      working-directory:
+        description: Folder of the spec repo to check.
+        type: string
+        default: .
+permissions:
+  contents: read
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the tag is signed and named vX.Y.Z
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag $TAG is not vX.Y.Z"; exit 1
+          fi
+          git fetch --force --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG"
+          if [ "$(git cat-file -t "$TAG")" != "tag" ]; then
+            echo "tag $TAG is not an annotated tag"; exit 1
+          fi
+          if ! git cat-file tag "$TAG" | grep -qE -- '-----BEGIN (SSH|PGP) SIGNATURE-----'; then
+            echo "tag $TAG is not signed"; exit 1
+          fi
+  strict-check:
+    needs: tag
+    uses: fpsot-org/GitHub-Actions/.github/workflows/spec-check.yml@v0
+    with:
+      prefix: ${{ inputs.prefix }}
+      working-directory: ${{ inputs.working-directory }}
+      strict: true
