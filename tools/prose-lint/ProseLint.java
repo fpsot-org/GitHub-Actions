@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * voice, nominalizations, vague words, parentheses, dashes and semicolons that join clauses, and noun
  * clusters. Code blocks, inline code, URLs, headings, tables and {@code Fixes #n} lines are skipped.
  * <p>
- * AsciiDoc files ({@code .adoc}) skip delimited blocks (listings, literals, passthroughs, comments, tables,
+ * AsciiDoc files ({@code .adoc}) skip delimited blocks (listings, literals, passthroughs, comments, tables, quotes,
  * examples, sidebars), attribute and block-attribute lines, headings, block titles, comments,
  * {@code include::} and {@code image::} lines, and keep only the text of links and cross-references.
  * <p>
@@ -243,7 +243,7 @@ public class ProseLint {
             String line = raw.strip();
             if (ADOC_DELIMITERS.contains(line)) {
                 flush(out, para, start);
-                boolean verbatim = !line.equals("====") && !line.equals("****") && !line.equals("____");
+                boolean verbatim = !line.equals("====") && !line.equals("****");
                 if (openBlock == null && verbatim) {
                     openBlock = line;
                 } else if (line.equals(openBlock)) {
