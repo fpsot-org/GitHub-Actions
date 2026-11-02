@@ -51,6 +51,8 @@ jobs:
   pr-title:
     if: github.event_name == 'pull_request'
     uses: ./.github/workflows/pr-title.yml
+    permissions:
+      pull-requests: read
   diagrams-fixture:
     uses: ./.github/workflows/diagrams.yml
     with:
