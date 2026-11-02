@@ -1,0 +1,6 @@
+= Test spec
+
+[[TST-001]]
+A test page MUST exist.
+
+See xref:../../docs/modules/en/pages/index.adoc[the guide].

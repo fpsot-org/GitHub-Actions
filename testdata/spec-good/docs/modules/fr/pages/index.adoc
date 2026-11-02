@@ -1,0 +1,3 @@
+= Guide de test
+
+Cette page explique la spécification de test.
