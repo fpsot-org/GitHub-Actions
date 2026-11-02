@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Checks an FPSOT spec repository: builds the AsciiDoc, checks every link, checks
+# requirement IDs, checks that English and French pages match, and checks the prose.
+# Call it from a spec repo:
+#
+#   uses: fpsot-org/GitHub-Actions/.github/workflows/spec-check.yml@v0
+#   with:
+#     prefix: VCS
+name: spec-check
+on:
+  workflow_call:
+    inputs:
+      prefix:
+        description: Requirement ID prefix, three upper-case letters.
+        type: string
+        required: true
+      strict:
+        description: Fail on missing or untranslated French pages (used for releases).
+        type: boolean
+        default: false
+      working-directory:
+        description: Folder of the spec repo to check.
+        type: string
+        default: .
+      tools-ref:
+        description: Ref of fpsot-org/GitHub-Actions to take the tools from.
+        type: string
+        default: v0
+permissions:
+  contents: read
+env:
+  TOOLS: ${{ github.workspace }}/.fpsot-tools
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.3'
+      - run: gem install asciidoctor -v 2.0.26 --no-document
+      - name: Render spec and docs to HTML
+        run: |
+          mapfile -t files < <(find spec docs -name '*.adoc' 2>/dev/null | sort)
+          if [ "${#files[@]}" -eq 0 ]; then echo "no .adoc files found"; exit 1; fi
+          asciidoctor --failure-level WARN -R . -D "$RUNNER_TEMP/html" "${files[@]}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-html
+          path: ${{ runner.temp }}/html
+  links:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-html
+          path: html
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --no-progress --max-retries 3 --root-dir "${{ github.workspace }}/html" 'html/**/*.html'
+          fail: true
+  ids-and-languages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .fpsot-tools/tools/go.mod
+          cache: false
+      - name: Build tools
+        working-directory: .fpsot-tools/tools
+        run: go build -o "$RUNNER_TEMP/bin/" ./cmd/...
+      - name: reqcheck
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          "$RUNNER_TEMP/bin/reqcheck" -prefix "${{ inputs.prefix }}" -spec spec -cite skill,rules ${{ inputs.strict && '-strict' || '' }}
+      - name: langparity
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          "$RUNNER_TEMP/bin/langparity" ${{ inputs.strict && '-strict' || '' }} spec docs/modules
+  prose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check prose
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          status=0
+          for lang in en fr; do
+            mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' 2>/dev/null | sort)
+            [ "${#files[@]}" -eq 0 ] && continue
+            java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${files[@]}" || status=1
+          done
+          exit $status

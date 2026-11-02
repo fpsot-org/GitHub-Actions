@@ -41,3 +41,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: bash tools/prose-lint/test.sh
+  spec-check-fixture:
+    uses: ./.github/workflows/spec-check.yml
+    with:
+      prefix: TST
+      working-directory: testdata/spec-good
+      tools-ref: ${{ github.sha }}
