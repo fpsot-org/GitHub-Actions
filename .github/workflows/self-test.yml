@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: bash scripts/test-check-pinned.sh
       - run: bash scripts/check-pinned.sh .github/workflows
+      - run: bash scripts/test-check-release-tag.sh
+      - run: bash scripts/test-check-pr-commits-signed.sh
   actionlint:
     runs-on: ubuntu-latest
     steps:
@@ -57,3 +59,11 @@ jobs:
     uses: ./.github/workflows/diagrams.yml
     with:
       working-directory: testdata/spec-good
+  signed-commits:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/signed-commits.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      tools-ref: ${{ github.sha }}
