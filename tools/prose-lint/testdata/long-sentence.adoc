@@ -1,0 +1,3 @@
+= Long
+
+The team writes one short rule for each page and the reader checks every rule against the code in the repository before the team merges the change into the main branch on each working day of the week again.

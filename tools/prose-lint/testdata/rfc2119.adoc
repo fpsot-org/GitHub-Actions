@@ -1,0 +1,3 @@
+= Rules
+
+The repository MUST reject unsigned commits.

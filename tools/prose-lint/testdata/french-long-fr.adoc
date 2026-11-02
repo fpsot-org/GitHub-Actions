@@ -1,0 +1,3 @@
+= Longue
+
+L'équipe écrit une règle courte pour chaque page et la personne qui lit vérifie chaque règle dans le dépôt avant que l'équipe fusionne la modification dans la branche principale à la fin de chaque journée de travail ouvrable.

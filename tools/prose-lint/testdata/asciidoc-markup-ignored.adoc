@@ -1,0 +1,31 @@
+= Markup
+:toc:
+:translation-status: done
+
+[[VCS-001]]
+.Example title
+[source,bash]
+----
+git commit -S -m "this listing line is a very long command that would be flagged as a long sentence if it were prose text in the page"
+----
+
+|===
+| Column one | Column two with a very long cell text that should never be counted as a sentence by the checker at all
+|===
+
+[NOTE]
+====
+Keep the page short.
+====
+
+include::partial.adoc[]
+image::diagram.svg[A diagram]
+
+See xref:a.adoc[the rules].
+Read link:https://example.org/guide[the guide].
+Go to <<rules,the list>>.
+Open https://example.org[the site].
+// A comment line that is long enough to be flagged if the checker read comments as prose text in the page.
+////
+A comment block that is long enough to be flagged if the checker read comment blocks as prose text here.
+////
