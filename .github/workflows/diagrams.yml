@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Renders every diagrams/**/*.puml to SVG with a pinned PlantUML and fails when a
+# committed SVG is missing or out of date. The rendered SVGs are uploaded as the
+# "diagrams-svg" artifact so they can be committed as they are.
+name: diagrams
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Folder of the repo that holds diagrams/.
+        type: string
+        default: .
+permissions:
+  contents: read
+env:
+  PLANTUML_VERSION: 1.2026.9
+  PLANTUML_SHA256: aa4a1d06f8911c4b842beff4828dd955be431692b631a312d04c0e9fab9581de
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download PlantUML
+        run: |
+          curl -sSLo "$RUNNER_TEMP/plantuml.jar" "https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar"
+          echo "${PLANTUML_SHA256}  $RUNNER_TEMP/plantuml.jar" | sha256sum -c -
+      - name: Render
+        run: |
+          mapfile -t files < <(find diagrams -name '*.puml' 2>/dev/null | sort)
+          if [ "${#files[@]}" -eq 0 ]; then echo "no diagrams"; exit 0; fi
+          java -Djava.awt.headless=true -jar "$RUNNER_TEMP/plantuml.jar" -tsvg -Playout=smetana -failfast2 "${files[@]}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: diagrams-svg
+          path: ${{ inputs.working-directory }}/diagrams/**/*.svg
+          if-no-files-found: ignore
+      - name: Check committed SVGs are up to date
+        run: |
+          changes="$(git status --porcelain -- diagrams)"
+          if [ -n "$changes" ]; then
+            echo "These SVGs are missing or out of date. Commit the files from the diagrams-svg artifact:"
+            echo "$changes"
+            exit 1
+          fi
