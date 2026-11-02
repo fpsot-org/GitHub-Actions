@@ -1,0 +1,4 @@
+= Spécification de test
+
+[[TST-001]]
+Une page de test DOIT exister.

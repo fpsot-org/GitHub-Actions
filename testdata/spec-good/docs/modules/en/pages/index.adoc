@@ -1,0 +1,3 @@
+= Test guide
+
+This page explains the test spec.
