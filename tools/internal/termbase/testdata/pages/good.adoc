@@ -1,0 +1,5 @@
+= Good page
+include::_fpsot-terms.adoc[]
+
+The {abbr-api-first} lets tools read the {term-registry}.
+Each {abbr-api} call returns a {term-screen} and a {term-file}.

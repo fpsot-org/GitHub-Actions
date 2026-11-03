@@ -1,0 +1,7 @@
+= Listing
+
+----
+{abbr-api} inside a listing is not substituted.
+----
+
+Inline code such as `{abbr-pdf}` is not substituted either.

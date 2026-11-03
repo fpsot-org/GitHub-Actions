@@ -1,0 +1,23 @@
+# Test term base. Definitions are short test values, not reference wording.
+terms:
+  - id: api
+    kind: abbreviation
+    en: {short: API, full: application programming interface, definition: Rules that let one program use another.}
+    fr: {short: API, full: interface de programmation d'application, definition: Règles qui permettent à un programme d'en utiliser un autre.}
+    source: {name: TERMIUM Plus, url: "https://www.btb.termiumplus.gc.ca/", checked: "2026-11-02"}
+  - id: pdf
+    kind: abbreviation
+    en: {short: PDF, full: Portable Document Format, definition: A file format for fixed-layout documents.}
+    fr: {short: PDF, full: format de document portable, definition: Format de fichier pour les documents à mise en page fixe.}
+  - id: registry
+    kind: term
+    en: {full: registry, definition: A system that records who holds what.}
+    fr: {full: registre, definition: Système qui consigne qui détient quoi.}
+  - id: screen
+    kind: term
+    en: {full: screen, definition: What a person sees on a display.}
+    fr: {full: écran, definition: Ce qu'une personne voit sur un affichage.}
+  - id: file
+    kind: term
+    en: {full: file, definition: A named unit of stored data.}
+    fr: {full: fichier, definition: Unité nommée de données stockées.}
