@@ -1,0 +1,10 @@
+# Term base used by the spec-good fixture.
+terms:
+  - id: api
+    kind: abbreviation
+    en: {short: API, full: application programming interface, definition: Rules that let one program use another.}
+    fr: {short: API, full: interface de programmation d'application, definition: Règles qui permettent à un programme d'en utiliser un autre.}
+  - id: registry
+    kind: term
+    en: {full: registry, definition: A system that records who holds what.}
+    fr: {full: registre, definition: Système qui consigne qui détient quoi.}

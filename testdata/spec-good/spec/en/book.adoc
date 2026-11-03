@@ -1,0 +1,7 @@
+= Test spec book
+:doctype: book
+:toc:
+
+include::index.adoc[leveloffset=+1]
+
+include::glossary.adoc[leveloffset=+1]

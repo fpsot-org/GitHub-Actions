@@ -16,6 +16,8 @@ jobs:
       - run: bash scripts/check-pinned.sh .github/workflows
       - run: bash scripts/test-check-release-tag.sh
       - run: bash scripts/test-check-pr-commits-signed.sh
+      - run: bash scripts/test-resolve-major-tag.sh
+      - run: bash scripts/test-fetch-spec-file.sh
   actionlint:
     runs-on: ubuntu-latest
     steps:
@@ -44,12 +46,59 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: bash tools/prose-lint/test.sh
+  scripts-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tools/go.mod
+          cache: false
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.3'
+      - name: Install Asciidoctor, pandoc, LibreOffice and PDF tools
+        env:
+          PANDOC_VERSION: '3.13'
+          PANDOC_SHA256: 7e3736f255090296ca5d1a14291a76b9b3c43cd385011b1621a4d0c16091a70f
+        run: |
+          gem install asciidoctor -v 2.0.26 --no-document
+          curl -sfLo "$RUNNER_TEMP/pandoc.deb" "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb"
+          echo "$PANDOC_SHA256  $RUNNER_TEMP/pandoc.deb" | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui poppler-utils qpdf "$RUNNER_TEMP/pandoc.deb" >/dev/null
+      - run: bash scripts/test-spec-generate.sh
+      - run: bash scripts/test-build-pdf.sh
   spec-check-fixture:
     uses: ./.github/workflows/spec-check.yml
     with:
       prefix: TST
       working-directory: testdata/spec-good
       tools-ref: ${{ github.sha }}
+      termbase-file: ../terms.yaml
+      model-file: ../jurisdiction-model.yaml
+      doc-rules: true
+      contributing-url: https://github.com/fpsot-org/fpsot-spec-vcs/blob/main/CONTRIBUTING.md
+  spec-check-output:
+    needs: spec-check-fixture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-html
+          path: html
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-book
+          path: book
+      - name: Check abbreviations, page dates, glossary and PDFs
+        run: |
+          set -e
+          grep -qF '<abbr title="application programming interface">API</abbr>' html/spec/en/index.html
+          grep -qF 'id="revdate"' html/spec/en/index.html
+          grep -qF 'id="gl-api"' html/spec/en/glossary.html
+          test -f html/docs/modules/fr/pages/jurisdictions/pages/ca/index.html
+          ls book/*-en.pdf book/*-fr.pdf
   pr-title:
     if: github.event_name == 'pull_request'
     uses: ./.github/workflows/pr-title.yml

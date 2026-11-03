@@ -1,4 +1,16 @@
-= Spécification de test
+= Spécification d'essai
+include::_fpsot-terms.adoc[]
 
 [[TST-001]]
-Une page de test DOIT exister.
+Une page d'essai DOIT exister.
+L'{abbr-api-first} du {term-registry} renvoie des pages.
+Chaque appel {abbr-api} est court.
+
+Voir xref:../../docs/modules/fr/pages/index.adoc[le guide].
+
+== Historique du document
+
+|===
+|Version |Date |Changement
+|0.1.0 |2026-11-02 |Première version.
+|===

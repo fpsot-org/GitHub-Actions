@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Checks an FPSOT spec repository: builds the AsciiDoc, checks every link, checks
-# requirement IDs, checks that English and French pages match, and checks the prose.
-# Call it from a spec repo:
+# Checks an FPSOT spec repository: generates the term attributes, glossaries and
+# jurisdiction pages, builds the AsciiDoc and the book (HTML and tagged PDF), checks
+# every link, requirement IDs, English/French parity, the prose, and (with doc-rules)
+# the documentation rules. Call it from a spec repo:
 #
 #   uses: fpsot-org/GitHub-Actions/.github/workflows/spec-check.yml@v0
 #   with:
 #     prefix: VCS
+#
+# The term base comes from fpsot-org/fpsot-spec-writing and the jurisdiction model
+# from fpsot-org/fpsot-spec-doc, each at its highest v0.Y.Z tag unless a ref is given.
 name: spec-check
 on:
   workflow_call:
@@ -16,7 +20,7 @@ on:
         type: string
         required: true
       strict:
-        description: Fail on missing or untranslated French pages (used for releases).
+        description: Release mode. Fail on missing or untranslated French pages and on stale comparison rows.
         type: boolean
         default: false
       working-directory:
@@ -27,27 +31,146 @@ on:
         description: Ref of fpsot-org/GitHub-Actions to take the tools from.
         type: string
         default: v0
+      writing-ref:
+        description: Ref of fpsot-org/fpsot-spec-writing for the term base. Empty = highest v0 tag; "local" = this repo's termbase/terms.yaml.
+        type: string
+        default: ''
+      doc-ref:
+        description: Ref of fpsot-org/fpsot-spec-doc for the jurisdiction model. Empty = highest v0 tag; "local" = this repo's model/jurisdiction.yaml.
+        type: string
+        default: ''
+      termbase-file:
+        description: Term base path relative to working-directory. Overrides writing-ref.
+        type: string
+        default: ''
+      model-file:
+        description: Jurisdiction model path relative to working-directory. Overrides doc-ref.
+        type: string
+        default: ''
+      doc-rules:
+        description: Run doccheck (required files, document history, page types, image text, book).
+        type: boolean
+        default: false
+      contributing-url:
+        description: Link target of the "how to contribute" text on undocumented jurisdiction pages. Default = this repo's CONTRIBUTING.md.
+        type: string
+        default: ''
 permissions:
   contents: read
 env:
   TOOLS: ${{ github.workspace }}/.fpsot-tools
+  LINKML_VERSION: 1.12.1
+  PANDOC_VERSION: '3.13'
+  PANDOC_SHA256: 7e3736f255090296ca5d1a14291a76b9b3c43cd385011b1621a4d0c16091a70f
 jobs:
-  build:
+  generate:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .fpsot-tools/tools/go.mod
+          cache: false
+      - name: Build tools
+        working-directory: .fpsot-tools/tools
+        run: go build -o "$RUNNER_TEMP/bin/" ./cmd/...
+      - name: Find the term base and the jurisdiction model
+        id: inputs
+        env:
+          WRITING_REF: ${{ inputs.writing-ref }}
+          DOC_REF: ${{ inputs.doc-ref }}
+          TERMBASE_FILE: ${{ inputs.termbase-file }}
+          MODEL_FILE: ${{ inputs.model-file }}
+        run: |
+          fetch="$TOOLS/scripts/fetch-spec-file.sh"
+          termbase="" model=""
+          if grep -rqE '\{(abbr|term)-|_fpsot-terms\.adoc' spec docs 2>/dev/null; then
+            if [ -n "$TERMBASE_FILE" ]; then termbase="$PWD/$TERMBASE_FILE"
+            elif [ "$WRITING_REF" = local ]; then termbase="$PWD/termbase/terms.yaml"
+            else
+              termbase="$RUNNER_TEMP/terms.yaml"
+              bash "$fetch" https://github.com/fpsot-org/fpsot-spec-writing.git "$WRITING_REF" termbase/terms.yaml "$termbase"
+            fi
+          fi
+          if compgen -G "jurisdictions/*.yaml" >/dev/null; then
+            if [ -n "$MODEL_FILE" ]; then model="$PWD/$MODEL_FILE"
+            elif [ "$DOC_REF" = local ]; then model="$PWD/model/jurisdiction.yaml"
+            else
+              model="$RUNNER_TEMP/jurisdiction.yaml"
+              bash "$fetch" https://github.com/fpsot-org/fpsot-spec-doc.git "$DOC_REF" model/jurisdiction.yaml "$model"
+            fi
+          fi
+          echo "termbase=$termbase" >> "$GITHUB_OUTPUT"
+          echo "model=$model" >> "$GITHUB_OUTPUT"
+      - if: steps.inputs.outputs.model != ''
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - if: steps.inputs.outputs.model != ''
+        run: pip install --quiet "linkml==$LINKML_VERSION"
+      - name: Generate and check
+        env:
+          TOOLS_BIN: ${{ runner.temp }}/bin
+          TERMBASE: ${{ steps.inputs.outputs.termbase }}
+          MODEL: ${{ steps.inputs.outputs.model }}
+          LINKML: ${{ steps.inputs.outputs.model != '' && 'linkml-validate' || '' }}
+          STRICT: ${{ inputs.strict }}
+          DOC_RULES: ${{ inputs.doc-rules }}
+        run: bash "$TOOLS/scripts/spec-generate.sh"
+      - name: Pack generated files
+        run: |
+          find spec docs \( -name '_fpsot-terms.adoc' -o -name glossary.adoc -o -path '*/pages/jurisdictions/*' \) -type f 2>/dev/null \
+            | tar -cf "$RUNNER_TEMP/generated.tar" -T -
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-generated
+          path: ${{ runner.temp }}/generated.tar
+  build:
+    needs: generate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-generated
+          path: ${{ runner.temp }}
+      - run: tar -xf "$RUNNER_TEMP/generated.tar"
       - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
         with:
           ruby-version: '3.3'
       - run: gem install asciidoctor -v 2.0.26 --no-document
       - name: Render spec and docs to HTML
+        env:
+          CONTRIBUTING_URL: ${{ inputs.contributing-url || format('{0}/{1}/blob/HEAD/CONTRIBUTING.md', github.server_url, github.repository) }}
+          SPEC_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
-          mapfile -t files < <(find spec docs -name '*.adoc' 2>/dev/null | sort)
-          if [ "${#files[@]}" -eq 0 ]; then echo "no .adoc files found"; exit 1; fi
-          asciidoctor --failure-level WARN -R . -D "$RUNNER_TEMP/html" "${files[@]}"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            SPEC_VERSION=${GITHUB_REF_NAME#v}
+          elif last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null); then
+            SPEC_VERSION="${last#v}-dev"
+          else
+            SPEC_VERSION=unreleased
+          fi
+          export SPEC_VERSION
+          bash "$TOOLS/scripts/spec-render.sh" "$RUNNER_TEMP/html"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: spec-html
@@ -64,6 +187,58 @@ jobs:
         with:
           args: --no-progress --max-retries 3 --root-dir "${{ github.workspace }}/html" 'html/**/*.html'
           fail: true
+  book:
+    needs: generate
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: has
+        run: |
+          if [ -f spec/en/book.adoc ]; then echo "book=true" >> "$GITHUB_OUTPUT"; else echo "No book; skipping."; fi
+      - if: steps.has.outputs.book == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - if: steps.has.outputs.book == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-generated
+          path: ${{ runner.temp }}
+      - if: steps.has.outputs.book == 'true'
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.3'
+      - if: steps.has.outputs.book == 'true'
+        name: Install Asciidoctor, pandoc, LibreOffice and PDF tools
+        run: |
+          gem install asciidoctor -v 2.0.26 --no-document
+          curl -sfLo "$RUNNER_TEMP/pandoc.deb" "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb"
+          echo "$PANDOC_SHA256  $RUNNER_TEMP/pandoc.deb" | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui poppler-utils "$RUNNER_TEMP/pandoc.deb" >/dev/null
+      - if: steps.has.outputs.book == 'true'
+        name: Build the PDF books
+        run: |
+          tar -xf "$RUNNER_TEMP/generated.tar"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v=${GITHUB_REF_NAME#v}; else v=unreleased; fi
+          export ASCIIDOCTOR_ATTRS="-a revnumber=$v"
+          mkdir -p "$RUNNER_TEMP/book"
+          name=$(basename "$GITHUB_REPOSITORY")
+          for l in en fr; do
+            [ -f "spec/$l/book.adoc" ] || continue
+            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$l-CA"
+            pdfinfo "$RUNNER_TEMP/book/$name-$l.pdf" | grep -q '^Tagged: *yes'
+          done
+      - if: steps.has.outputs.book == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-book
+          path: ${{ runner.temp }}/book
   ids-and-languages:
     runs-on: ubuntu-latest
     steps:
@@ -82,12 +257,21 @@ jobs:
         run: go build -o "$RUNNER_TEMP/bin/" ./cmd/...
       - name: reqcheck
         working-directory: ${{ inputs.working-directory }}
+        env:
+          PREFIX: ${{ inputs.prefix }}
+          STRICT: ${{ inputs.strict }}
         run: |
-          "$RUNNER_TEMP/bin/reqcheck" -prefix "${{ inputs.prefix }}" -spec spec -cite skill,rules ${{ inputs.strict && '-strict' || '' }}
+          strict=()
+          [ "$STRICT" = true ] && strict=(-strict)
+          "$RUNNER_TEMP/bin/reqcheck" -prefix "$PREFIX" -spec spec -cite skill,rules "${strict[@]}"
       - name: langparity
         working-directory: ${{ inputs.working-directory }}
+        env:
+          STRICT: ${{ inputs.strict }}
         run: |
-          "$RUNNER_TEMP/bin/langparity" ${{ inputs.strict && '-strict' || '' }} spec docs/modules
+          strict=()
+          [ "$STRICT" = true ] && strict=(-strict)
+          "$RUNNER_TEMP/bin/langparity" "${strict[@]}" spec docs/modules
   prose:
     runs-on: ubuntu-latest
     steps:
@@ -106,7 +290,7 @@ jobs:
         run: |
           status=0
           for lang in en fr; do
-            mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' 2>/dev/null | sort)
+            mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' ! -name '_*' 2>/dev/null | sort)
             [ "${#files[@]}" -eq 0 ] && continue
             java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${files[@]}" || status=1
           done
