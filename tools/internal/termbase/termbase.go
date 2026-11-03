@@ -211,13 +211,15 @@ type ref struct {
 
 var (
 	refPattern = regexp.MustCompile(`\{(abbr|term)-([a-z0-9]+(?:-[a-z0-9]+)*?)(-first)?\}`)
-	inlineCode = regexp.MustCompile("`[^`]*`|\\+[^+]+\\+")
+	// Inline passthroughs: `+text+` and +text+. Plain backticks are not listed here,
+	// because Asciidoctor substitutes attributes inside them.
+	inlineCode = regexp.MustCompile("`\\+[^`]*\\+`|\\+[^+]+\\+")
 	// Blocks whose content Asciidoctor does not substitute attributes in.
 	verbatim = map[string]bool{"----": true, "....": true, "++++": true, "////": true}
 )
 
 // refs returns the attribute references of one file, outside verbatim blocks,
-// comments and inline code.
+// comments and inline passthroughs.
 func refs(path string) ([]ref, error) {
 	f, err := os.Open(path)
 	if err != nil {
