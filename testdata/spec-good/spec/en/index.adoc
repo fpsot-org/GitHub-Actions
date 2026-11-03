@@ -1,6 +1,16 @@
 = Test spec
+include::_fpsot-terms.adoc[]
 
 [[TST-001]]
 A test page MUST exist.
+The {abbr-api-first} of the {term-registry} returns pages.
+Each {abbr-api} call is short.
 
 See xref:../../docs/modules/en/pages/index.adoc[the guide].
+
+== Document history
+
+|===
+|Version |Date |Change
+|0.1.0 |2026-11-02 |First version.
+|===

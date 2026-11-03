@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: Apache-2.0
+id: https://fpsot.org/model/jurisdiction
+name: jurisdiction
+title: FPSOT jurisdiction comparison data
+description: >-
+  Format of the comparison data an FPSOT specification keeps in jurisdictions/.
+  baseline.yaml holds a Baseline; each <cc>.yaml or <cc>/<sub>.yaml holds a JurisdictionFile.
+license: Community-Spec-1.0
+version: 0.1.0
+prefixes:
+  linkml: https://w3id.org/linkml/
+  fpsot: https://fpsot.org/model/jurisdiction/
+default_prefix: fpsot
+default_range: string
+imports:
+  - linkml:types
+
+classes:
+  LocalizedText:
+    description: A value in English and French.
+    attributes:
+      en: {required: true, description: English (Canada).}
+      fr: {required: true, description: French (Canada).}
+
+  Topic:
+    description: A topic jurisdiction pages are grouped by.
+    attributes:
+      id:
+        identifier: true
+        pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      en: {required: true}
+      fr: {required: true}
+
+  Source:
+    description: The exact version of an outside document, with an archived copy.
+    attributes:
+      title: {required: true}
+      version: {}
+      date: {description: Publication or revision date as the publisher states it.}
+      url: {required: true, range: uri}
+      archive: {required: true, range: uri, description: "Archived copy, for example a Wayback Machine snapshot."}
+
+  BaselineRow:
+    description: One compared requirement, with the international baseline and the FPSOT default.
+    attributes:
+      id:
+        required: true
+        pattern: "^[A-Z]{3}-[0-9]{3}$"
+        description: Requirement ID in the specification.
+      topic: {required: true, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"}
+      requirement: {required: true, range: LocalizedText, inlined: true}
+      international: {required: true, range: LocalizedText, inlined: true}
+      international_source: {required: true, range: Source, inlined: true}
+      fpsot: {required: true, range: LocalizedText, inlined: true}
+
+  Baseline:
+    tree_root: true
+    description: Content of jurisdictions/baseline.yaml.
+    attributes:
+      topics: {required: true, multivalued: true, range: Topic, inlined: true, inlined_as_list: false}
+      rows: {required: true, multivalued: true, range: BaselineRow, inlined: true, inlined_as_list: true}
+
+  ComparisonRow:
+    description: How one jurisdiction handles one baseline row.
+    attributes:
+      id: {required: true, pattern: "^[A-Z]{3}-[0-9]{3}$"}
+      text: {required: true, range: LocalizedText, inlined: true}
+      status: {required: true, range: Status}
+      source: {required: true, range: Source, inlined: true}
+      last_checked: {required: true, range: date}
+
+  JurisdictionFile:
+    description: Content of jurisdictions/<cc>.yaml (country) or jurisdictions/<cc>/<sub>.yaml (subdivision).
+    attributes:
+      code:
+        required: true
+        pattern: "^[A-Z]{2}(-[A-Z0-9]{1,3})?$"
+        description: ISO 3166-1 alpha-2 country code, or ISO 3166-2 subdivision code.
+      name: {required: true, range: LocalizedText, inlined: true}
+      rows: {required: true, multivalued: true, range: ComparisonRow, inlined: true, inlined_as_list: true}
+
+enums:
+  Status:
+    description: The jurisdiction compared with the FPSOT default.
+    permissible_values:
+      same: {}
+      stricter: {}
+      looser: {}
+      not-covered: {}

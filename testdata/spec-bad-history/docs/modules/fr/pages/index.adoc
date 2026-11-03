@@ -1,0 +1,12 @@
+= Guide d'essai
+:page-type: explanation
+include::_fpsot-terms.adoc[]
+
+Cette page explique la spécification d'essai et son {abbr-api-first}.
+
+== Historique du document
+
+|===
+|Version |Date |Changement
+|0.1.0 |2026-11-02 |Première version.
+|===

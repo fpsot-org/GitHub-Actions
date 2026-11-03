@@ -5,4 +5,4 @@ rows:
     text: {en: Plain language for web content., fr: Langage clair pour le contenu Web.}
     status: same
     source: {title: Canada.ca Content Style Guide, version: "2024", date: "2024-01-01", url: "https://www.canada.ca/en/treasury-board-secretariat/services/government-communications/canada-content-style-guide.html", archive: "https://web.archive.org/web/2026/https://www.canada.ca/"}
-    last_checked: 2026-10-01
+    last_checked: "2026-10-01"

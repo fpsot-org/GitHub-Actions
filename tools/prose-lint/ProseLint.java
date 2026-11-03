@@ -44,7 +44,7 @@ public class ProseLint {
     private static final Pattern VERSION = Pattern.compile("\\b\\d+\\.\\d+(\\.\\d+)?\\b");
     private static final Pattern ABBREV = Pattern.compile("\\b(e\\.g|i\\.e|vs|etc|cf)\\.");
     private static final Pattern SENTENCE_END = Pattern.compile("(?<=[.!?])(?:\\*\\*)?\\s+(?=[\\p{Lu}0-9#\"'(\\[*«]|CODE|URL)");
-    private static final Pattern WORD = Pattern.compile("[\\p{L}0-9_'’-]+");
+    private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{M}0-9_'’-]+");
     private static final Pattern TOKEN = Pattern.compile("[\\p{L}-]+");
     private static final Set<String> ADOC_DELIMITERS = Set.of("----", "....", "++++", "////", "|===", "====", "****", "____");
     private static final Pattern ADOC_SKIP_LINE = Pattern.compile("^(:|\\[|=|//|\\.\\p{L}|include::|image::|ifdef::|ifndef::|endif::)");

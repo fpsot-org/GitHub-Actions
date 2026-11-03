@@ -1,0 +1,8 @@
+code: CA
+name: {en: Canada, fr: Canada}
+rows:
+  - id: TST-001
+    text: {en: Same as the default., fr: Identique à la valeur par défaut.}
+    status: same
+    source: {title: RFC 2119, version: BCP 14, date: "1997-03", url: "https://www.rfc-editor.org/rfc/rfc2119.html", archive: "https://www.rfc-editor.org/rfc/rfc2119.txt"}
+    last_checked: "2026-11-01"

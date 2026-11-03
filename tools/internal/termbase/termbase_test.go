@@ -178,3 +178,12 @@ func TestFindingString(t *testing.T) {
 		t.Fatal(s)
 	}
 }
+
+// Asciidoctor substitutes attributes inside plain backticks, so those count.
+func TestCheckCountsPlainBackticks(t *testing.T) {
+	b := load(t)
+	p := writeTemp(t, "code.adoc", "= T\n\nThe call `{abbr-api}` is short.\n")
+	if f := b.Check([]string{p}); len(f) != 1 || !strings.Contains(f[0].Msg, "{abbr-api} used before") {
+		t.Fatalf("want a first-use finding for `{abbr-api}`, got %+v", f)
+	}
+}

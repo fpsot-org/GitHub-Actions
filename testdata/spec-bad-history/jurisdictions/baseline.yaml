@@ -1,0 +1,9 @@
+topics:
+  pages: {en: Test pages, fr: Pages d'essai}
+rows:
+  - id: TST-001
+    topic: pages
+    requirement: {en: A test page exists., fr: Une page d'essai existe.}
+    international: {en: Keywords as in BCP 14., fr: Mots clés selon BCP 14.}
+    international_source: {title: RFC 8174, version: BCP 14, date: "2017-05", url: "https://www.rfc-editor.org/rfc/rfc8174.html", archive: "https://www.rfc-editor.org/rfc/rfc8174.txt"}
+    fpsot: {en: One page per spec., fr: Une page par spécification.}

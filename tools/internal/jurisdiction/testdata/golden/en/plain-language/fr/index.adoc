@@ -8,4 +8,4 @@ This comparison is informational. It is not legal advice.
 
 Back to xref:../region-150.adoc[Europe].
 
-This jurisdiction is not documented yet for this topic. To add it, see link:{spec-repo-url}/blob/main/CONTRIBUTING.md[how to contribute].
+This jurisdiction is not documented yet for this topic. To add it, see link:{contributing-url}[how to contribute].

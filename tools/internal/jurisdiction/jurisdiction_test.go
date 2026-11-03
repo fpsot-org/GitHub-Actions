@@ -153,7 +153,7 @@ func TestStaleBoundary(t *testing.T) {
 }
 
 func TestFutureDate(t *testing.T) {
-	body := strings.Replace(read(t, "testdata/valid/ca.yaml"), "last_checked: 2026-10-01", "last_checked: 2026-11-03", 1)
+	body := strings.Replace(read(t, "testdata/valid/ca.yaml"), "last_checked: \"2026-10-01\"", "last_checked: \"2026-11-03\"", 1)
 	dir := copyValid(t, map[string]string{"ca.yaml": body})
 	_, err := LoadDir(dir, baseline(t), LoadOptions{Today: today})
 	if err == nil || !strings.Contains(err.Error(), "future") {
@@ -185,7 +185,7 @@ func TestGenerate(t *testing.T) {
 			}
 		}
 		stub := read(t, filepath.Join(out, "plain-language/fr/index.adoc"))
-		for _, want := range []string{":page-type: reference", map[string]string{"en": "It is not legal advice.", "fr": "Elle ne constitue pas un avis juridique."}[lang], "{spec-repo-url}/blob/main/CONTRIBUTING.md"} {
+		for _, want := range []string{":page-type: reference", map[string]string{"en": "It is not legal advice.", "fr": "Elle ne constitue pas un avis juridique."}[lang], "link:{contributing-url}["} {
 			if !strings.Contains(stub, want) {
 				t.Errorf("%s France stub lacks %q", lang, want)
 			}
