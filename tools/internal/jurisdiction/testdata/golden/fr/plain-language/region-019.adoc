@@ -18,7 +18,7 @@ Retour à xref:index.adoc[Langage clair].
 * xref:bm/index.adoc[Bermudes]
 * xref:bo/index.adoc[Bolivie]
 * xref:br/index.adoc[Brésil]
-* xref:ca/index.adoc[Canada] (documenté)
+* xref:ca/index.adoc[Canada] (avec données)
 * xref:cl/index.adoc[Chili]
 * xref:co/index.adoc[Colombie]
 * xref:cr/index.adoc[Costa Rica]
