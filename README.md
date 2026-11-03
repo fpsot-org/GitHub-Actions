@@ -24,6 +24,9 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 - `tools/cmd/jurisgen`: writes the comparison pages from `jurisdictions/` data.
   It flags rows that nobody checked in the last 12 months.
 - `tools/cmd/doccheck`: checks the documentation rules, such as required files and a document history on each page.
+- `tools/cmd/sitecollect`: turns one generated spec into content for the fpsot.org site.
+  It places each page at its site URL and rewrites the links between pages to site URLs.
+- `scripts/site-bundle.sh`: generates a spec checked out at a release tag and runs `sitecollect` on it.
 - `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice.
 - `scripts/resolve-major-tag.sh` and `scripts/fetch-spec-file.sh`: take a file from another spec at its highest `v0` tag.
 
