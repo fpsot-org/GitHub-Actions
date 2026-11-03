@@ -183,8 +183,9 @@ jobs:
         with:
           name: spec-html
           path: html
-      # iso.org, LégisQuébec and CanLII answer 403 to automated readers. Comparison
-      # pages always pair these links with an archived copy, which is checked.
+      # iso.org, LégisQuébec and CanLII answer 403 to automated readers, and www.canada.ca
+      # resets the connection from GitHub runners. Comparison pages always pair these
+      # links with an archived copy, which is checked.
       - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: >-
@@ -192,6 +193,7 @@ jobs:
             --exclude '^https://(www\.)?iso\.org/'
             --exclude '^https://(www\.)?legisquebec\.gouv\.qc\.ca/'
             --exclude '^https://(www\.)?canlii\.org/'
+            --exclude '^https://www\.canada\.ca/'
             'html/**/*.html'
           fail: true
   book:
