@@ -24,6 +24,11 @@ check_pdf() { # lang-dir lang-tag title
 check_pdf en en-CA "FPSOT test specification"
 # Asciidoctor turns the apostrophe into a typographic one (U+2019).
 check_pdf fr fr-CA "Spécification d’essai FPSOT"
+# The table of contents is filled in: its heading and a chapter title come before the chapter text.
+if [ -f "$work/en.pdf" ]; then
+  pdftotext "$work/en.pdf" - | awk '/This chapter holds one rule/{exit} /^Rules/{n++} END{exit !(n>=2)}' \
+    || { echo "FAIL: en: table of contents is empty"; fail=1; }
+fi
 if [ -f "$work/fr.pdf" ]; then
   pdftotext "$work/fr.pdf" - | grep -q 'Spécification, élément, ça, où, déjà' || { echo "FAIL: fr: accents lost in text"; fail=1; }
 fi
