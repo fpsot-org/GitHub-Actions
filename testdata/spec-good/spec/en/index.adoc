@@ -8,6 +8,9 @@ Each {abbr-api} call is short.
 
 See xref:../../docs/modules/en/pages/index.adoc[the guide].
 
+// These hosts refuse automated readers, so the link check skips them.
+See link:https://www.iso.org/standard/78907.html[ISO 24495-1] and link:https://www.legisquebec.gouv.qc.ca/fr/document/lc/C-11[the Charter].
+
 == Document history
 
 |===
