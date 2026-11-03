@@ -4,7 +4,8 @@
 # annotated vX.Y.Z tag whose signature GitHub verified, then runs spec-check in strict mode: every page must exist
 # in English and French, no French page may still be marked as pending, and no comparison row may be stale.
 # Then it creates the GitHub release with the PDF books attached.
-# The caller's job must grant `contents: write`, for the release.
+# The caller's job must grant `contents: write`, for the release; with read only,
+# the checks still run and only the publish step fails.
 # The notification to the website is added later.
 name: spec-release
 on:
@@ -34,11 +35,13 @@ on:
         description: Passed to spec-check.
         type: boolean
         default: false
-permissions:
-  contents: read
+# No workflow-level permissions: each job states its own, and publish takes what the
+# caller grants. Asking for more than the caller grants fails the run at startup.
 jobs:
   tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Require a tag push
         if: github.ref_type != 'tag'
@@ -60,6 +63,8 @@ jobs:
           bash .fpsot-tools/scripts/check-release-tag.sh "$TAG"
   strict-check:
     needs: tag
+    permissions:
+      contents: read
     uses: fpsot-org/GitHub-Actions/.github/workflows/spec-check.yml@v0
     with:
       prefix: ${{ inputs.prefix }}
@@ -72,8 +77,6 @@ jobs:
   publish:
     needs: strict-check
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

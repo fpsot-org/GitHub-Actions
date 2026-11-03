@@ -116,3 +116,10 @@ jobs:
       pull-requests: read
     with:
       tools-ref: ${{ github.sha }}
+  # Never runs: self-test has no workflow_dispatch trigger. GitHub still validates the call at startup, so this fails the whole
+  # run when spec-release asks for more permissions than a read-only caller grants.
+  spec-release-callable:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/spec-release.yml
+    with:
+      prefix: TST
