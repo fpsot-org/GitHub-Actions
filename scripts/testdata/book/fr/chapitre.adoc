@@ -1,0 +1,10 @@
+= Règles
+
+Ce chapitre contient une règle. Spécification, élément, ça, où, déjà.
+
+== Historique du document
+
+|===
+|Version |Date |Changement
+|0.1.0 |2026-11-02 |Première version.
+|===
