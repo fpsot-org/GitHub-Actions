@@ -116,3 +116,10 @@ jobs:
       pull-requests: read
     with:
       tools-ref: ${{ github.sha }}
+  # Never runs. GitHub still validates the call at startup, so this fails the whole
+  # run when spec-release asks for more permissions than a read-only caller grants.
+  spec-release-callable:
+    if: false
+    uses: ./.github/workflows/spec-release.yml
+    with:
+      prefix: TST
