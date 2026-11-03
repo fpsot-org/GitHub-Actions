@@ -21,6 +21,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -147,9 +149,47 @@ func (b *Base) Attributes(lang, glossaryXref string) string {
 		fmt.Fprintf(&sb, "ifdef::backend-html5[]\n:abbr-%s-html: pass:[%s]\n:abbr-%s: xref:%s[{abbr-%s-html}]\nendif::[]\n",
 			t.ID, macroText(abbr), t.ID, target, t.ID)
 		fmt.Fprintf(&sb, "ifndef::backend-html5[]\n:abbr-%s: xref:%s[%s]\nendif::[]\n", t.ID, target, macroText(f.Short))
-		fmt.Fprintf(&sb, ":abbr-%s-first: %s ({abbr-%s})\n", t.ID, f.Full, t.ID)
+		fmt.Fprintf(&sb, ":abbr-%s-first: %s\n", t.ID, firstForm(t.ID, f))
 	}
 	return sb.String()
+}
+
+// firstForm spells an abbreviation out for its first use on a page: "full ({abbr-id})".
+// When the full form already holds the abbreviation as a word, such as "document RFC",
+// that word becomes the abbreviation itself instead of repeating it in brackets.
+func firstForm(id string, f Form) string {
+	ref := "{abbr-" + id + "}"
+	for i := 0; ; {
+		j := strings.Index(f.Full[i:], f.Short)
+		if j < 0 {
+			break
+		}
+		start, end := i+j, i+j+len(f.Short)
+		if !wordRune(lastRune(f.Full[:start])) && !wordRune(firstRune(f.Full[end:])) {
+			return f.Full[:start] + ref + f.Full[end:]
+		}
+		i = start + 1
+	}
+	return f.Full + " (" + ref + ")"
+}
+
+// wordRune reports whether r is a letter or a digit. The zero rune (no neighbour) is not.
+func wordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+
+func firstRune(s string) rune {
+	r, _ := utf8.DecodeRuneInString(s)
+	if r == utf8.RuneError {
+		return 0
+	}
+	return r
+}
+
+func lastRune(s string) rune {
+	r, _ := utf8.DecodeLastRuneInString(s)
+	if r == utf8.RuneError {
+		return 0
+	}
+	return r
 }
 
 func (b *Base) sorted() []*Term {

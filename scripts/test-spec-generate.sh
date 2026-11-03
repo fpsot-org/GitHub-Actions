@@ -33,6 +33,17 @@ expect spec/en/book.html 'href="#gl-api"'
 expect spec/en/book.html 'id="gl-api"'
 expect docs/modules/fr/pages/index.html 'href="../../../../spec/fr/glossary.html#gl-api"'
 expect docs/modules/en/pages/jurisdictions/pages/fr/index.html 'https://example.org/CONTRIBUTING.md'
+# Each page declares its language, and French pages use French labels.
+expect spec/en/index.html '<html lang="en"'
+expect spec/fr/index.html '<html lang="fr"'
+expect spec/fr/glossary.html '<html lang="fr"'
+expect docs/modules/fr/pages/jurisdictions/pages/ca/index.html '<html lang="fr"'
+expect docs/modules/en/pages/jurisdictions/pages/fr/index.html '<html lang="en"'
+expect spec/fr/book.html 'Table des matières'
+# The footer would show the checkout time as "Last updated"; pages show their Git date instead.
+for f in spec/en/index.html spec/fr/index.html; do
+  ! grep -q 'last-update\|Last updated\|Dernière mise à jour' "$work/html/$f" || { echo "FAIL: $f shows a footer update time"; fail=1; }
+done
 cp -r "$repo/testdata/spec-bad-history" "$work/bad"
 if (cd "$work/bad" && bash "$here/spec-generate.sh") >"$work/bad.log" 2>&1; then
   echo "FAIL: spec-bad-history should fail"; fail=1

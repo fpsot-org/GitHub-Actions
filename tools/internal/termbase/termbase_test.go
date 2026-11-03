@@ -187,3 +187,40 @@ func TestCheckCountsPlainBackticks(t *testing.T) {
 		t.Fatalf("want a first-use finding for `{abbr-api}`, got %+v", f)
 	}
 }
+
+// A full form that already holds the abbreviation, such as "document RFC", must not
+// repeat it in brackets: the first use marks the abbreviation inside the full form.
+func TestAttributesFullFormHoldsShort(t *testing.T) {
+	yaml := `terms:
+  - id: rfc
+    kind: abbreviation
+    en: {short: RFC, full: Request for Comments, definition: Test.}
+    fr: {short: RFC, full: document RFC, definition: Test.}
+`
+	b, err := Load(writeTemp(t, "terms.yaml", yaml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fr := b.Attributes("fr", "glossary.adoc"); !strings.Contains(fr, ":abbr-rfc-first: document {abbr-rfc}\n") {
+		t.Fatalf("French first form repeats the abbreviation:\n%s", fr)
+	}
+	if en := b.Attributes("en", "glossary.adoc"); !strings.Contains(en, ":abbr-rfc-first: Request for Comments ({abbr-rfc})\n") {
+		t.Fatalf("English first form changed:\n%s", en)
+	}
+}
+
+// The abbreviation is found as a whole word even when it ends in a symbol, and not
+// inside a longer word.
+func TestFirstFormWordBoundaries(t *testing.T) {
+	cases := []struct{ short, full, want string }{
+		{"C++", "langage C++", "langage {abbr-x}"},
+		{"C++", "C++ language", "{abbr-x} language"},
+		{"SVG", "SVGZ file", "SVGZ file ({abbr-x})"},
+		{"URL", "adresse URL", "adresse {abbr-x}"},
+	}
+	for _, c := range cases {
+		if got := firstForm("x", Form{Short: c.short, Full: c.full}); got != c.want {
+			t.Errorf("firstForm(%q, %q) = %q, want %q", c.short, c.full, got, c.want)
+		}
+	}
+}
