@@ -1,0 +1,22 @@
+= Requirement keywords: Québec
+:page-type: reference
+
+[NOTE]
+====
+This comparison is informational. It is not legal advice.
+====
+
+Back to xref:index.adoc[Canada].
+
+[cols="2,2,2,2,1,2,1",options="header"]
+|===
+|Requirement |International baseline |FPSOT default |This jurisdiction |Status |Source and version |Last checked
+
+|WRT-010: Use BCP 14 keywords.
+|RFC 2119 and RFC 8174.
+|Capitals only.
+|No rule.
+|not covered
+|link:https://www.quebec.ca/[Guide de rédaction], 3, 2025-03-01. link:https://web.archive.org/web/2026/https://www.quebec.ca/[Archived copy]
+|2025-11-01
+|===

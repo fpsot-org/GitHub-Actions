@@ -1,0 +1,26 @@
+= Plain language: Canada
+:page-type: reference
+
+[NOTE]
+====
+This comparison is informational. It is not legal advice.
+====
+
+Back to xref:../region-019.adoc[Americas].
+
+[cols="2,2,2,2,1,2,1",options="header"]
+|===
+|Requirement |International baseline |FPSOT default |This jurisdiction |Status |Source and version |Last checked
+
+|WRT-001: Write in plain language.
+|Readers find, understand and use the text.
+|Sentences of 20 words or fewer \| active voice.
+|Plain language for web content.
+|same
+|link:https://www.canada.ca/en/treasury-board-secretariat/services/government-communications/canada-content-style-guide.html[Canada.ca Content Style Guide], 2024, 2024-01-01. link:https://web.archive.org/web/2026/https://www.canada.ca/[Archived copy]
+|2026-10-01
+|===
+
+== Documented subdivisions
+
+* xref:qc.adoc[Québec]

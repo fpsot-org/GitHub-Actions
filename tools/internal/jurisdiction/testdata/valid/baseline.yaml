@@ -1,0 +1,16 @@
+topics:
+  plain-language: {en: Plain language, fr: Langage clair}
+  keywords: {en: Requirement keywords, fr: Mots clés des exigences}
+rows:
+  - id: WRT-001
+    topic: plain-language
+    requirement: {en: Write in plain language., fr: Rédiger en langage clair.}
+    international: {en: "Readers find, understand and use the text.", fr: "Le lecteur trouve, comprend et utilise le texte."}
+    international_source: {title: ISO 24495-1, version: "2023", date: "2023-06", url: "https://www.iso.org/standard/78907.html", archive: "https://web.archive.org/web/2026/https://www.iso.org/standard/78907.html"}
+    fpsot: {en: "Sentences of 20 words or fewer | active voice.", fr: "Phrases de 20 mots ou moins | voix active."}
+  - id: WRT-010
+    topic: keywords
+    requirement: {en: Use BCP 14 keywords., fr: Utiliser les mots clés BCP 14.}
+    international: {en: RFC 2119 and RFC 8174., fr: RFC 2119 et RFC 8174.}
+    international_source: {title: RFC 8174, version: "BCP 14", date: "2017-05", url: "https://www.rfc-editor.org/rfc/rfc8174", archive: "https://web.archive.org/web/2026/https://www.rfc-editor.org/rfc/rfc8174"}
+    fpsot: {en: Capitals only., fr: Majuscules seulement.}

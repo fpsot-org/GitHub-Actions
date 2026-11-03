@@ -1,0 +1,22 @@
+= Langage clair : Québec
+:page-type: reference
+
+[NOTE]
+====
+Cette comparaison est informative. Elle ne constitue pas un avis juridique.
+====
+
+Retour à xref:index.adoc[Canada].
+
+[cols="2,2,2,2,1,2,1",options="header"]
+|===
+|Exigence |Référence internationale |Valeur FPSOT |Ce territoire |Statut |Source et version |Dernière vérification
+
+|WRT-001: Rédiger en langage clair.
+|Le lecteur trouve, comprend et utilise le texte.
+|Phrases de 20 mots ou moins \| voix active.
+|Rédaction simplifiée pour les services publics.
+|plus strict
+|link:https://www.quebec.ca/[Guide de rédaction], 3, 2025-03-01. link:https://web.archive.org/web/2026/https://www.quebec.ca/[Copie archivée]
+|2025-11-02
+|===

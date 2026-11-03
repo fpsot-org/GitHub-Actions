@@ -1,5 +1,9 @@
 FPSOT GitHub Actions
 Copyright 2026 The FPSOT Authors
+FPSOT: Foundation for Public Sector Open Technology
 
-This product includes software developed as part of the FPSOT project
-(Foundation for Public Sector Open Technology).
+This product includes software developed as part of the FPSOT project.
+
+tools/internal/jurisdiction/territories.json is derived from Unicode CLDR 49.0.0
+(https://github.com/unicode-org/cldr-json). Copyright © 1991-2026 Unicode, Inc.
+Distributed under the Unicode License v3 (https://www.unicode.org/license.txt).

@@ -1,0 +1,13 @@
+code: CA-QC
+name: {en: Québec, fr: Québec}
+rows:
+  - id: WRT-001
+    text: {en: Simplified writing for public services., fr: Rédaction simplifiée pour les services publics.}
+    status: stricter
+    source: {title: Guide de rédaction, version: "3", date: "2025-03-01", url: "https://www.quebec.ca/", archive: "https://web.archive.org/web/2026/https://www.quebec.ca/"}
+    last_checked: 2025-11-02
+  - id: WRT-010
+    text: {en: No rule., fr: Aucune règle.}
+    status: not-covered
+    source: {title: Guide de rédaction, version: "3", date: "2025-03-01", url: "https://www.quebec.ca/", archive: "https://web.archive.org/web/2026/https://www.quebec.ca/"}
+    last_checked: 2025-11-01

@@ -1,0 +1,26 @@
+= Plain language: comparison by jurisdiction
+:page-type: reference
+
+[NOTE]
+====
+This comparison is informational. It is not legal advice.
+====
+
+== FPSOT default and international baseline
+
+[cols="2,3,3",options="header"]
+|===
+|Requirement |International baseline |FPSOT default
+
+|WRT-001: Write in plain language.
+|Readers find, understand and use the text. link:https://www.iso.org/standard/78907.html[ISO 24495-1], 2023, 2023-06. link:https://web.archive.org/web/2026/https://www.iso.org/standard/78907.html[Archived copy]
+|Sentences of 20 words or fewer \| active voice.
+|===
+
+== Jurisdictions
+
+* xref:region-002.adoc[Africa]
+* xref:region-019.adoc[Americas]
+* xref:region-142.adoc[Asia]
+* xref:region-150.adoc[Europe]
+* xref:region-009.adoc[Oceania]

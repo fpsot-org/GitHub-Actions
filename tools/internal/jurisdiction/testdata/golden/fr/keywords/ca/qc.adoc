@@ -1,0 +1,22 @@
+= Mots clés des exigences : Québec
+:page-type: reference
+
+[NOTE]
+====
+Cette comparaison est informative. Elle ne constitue pas un avis juridique.
+====
+
+Retour à xref:index.adoc[Canada].
+
+[cols="2,2,2,2,1,2,1",options="header"]
+|===
+|Exigence |Référence internationale |Valeur FPSOT |Ce territoire |Statut |Source et version |Dernière vérification
+
+|WRT-010: Utiliser les mots clés BCP 14.
+|RFC 2119 et RFC 8174.
+|Majuscules seulement.
+|Aucune règle.
+|non couvert
+|link:https://www.quebec.ca/[Guide de rédaction], 3, 2025-03-01. link:https://web.archive.org/web/2026/https://www.quebec.ca/[Copie archivée]
+|2025-11-01
+|===

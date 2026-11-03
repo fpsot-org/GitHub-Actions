@@ -1,0 +1,11 @@
+= Langage clair : France
+:page-type: reference
+
+[NOTE]
+====
+Cette comparaison est informative. Elle ne constitue pas un avis juridique.
+====
+
+Retour à xref:../region-150.adoc[Europe].
+
+Ce territoire n'est pas encore documenté pour ce sujet. Pour l'ajouter, voir link:{spec-repo-url}/blob/main/CONTRIBUTING.md[comment contribuer].

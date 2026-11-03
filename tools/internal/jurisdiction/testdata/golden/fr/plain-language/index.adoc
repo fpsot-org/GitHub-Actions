@@ -1,0 +1,26 @@
+= Langage clair : comparaison par territoire
+:page-type: reference
+
+[NOTE]
+====
+Cette comparaison est informative. Elle ne constitue pas un avis juridique.
+====
+
+== Valeur FPSOT et référence internationale
+
+[cols="2,3,3",options="header"]
+|===
+|Exigence |Référence internationale |Valeur FPSOT
+
+|WRT-001: Rédiger en langage clair.
+|Le lecteur trouve, comprend et utilise le texte. link:https://www.iso.org/standard/78907.html[ISO 24495-1], 2023, 2023-06. link:https://web.archive.org/web/2026/https://www.iso.org/standard/78907.html[Copie archivée]
+|Phrases de 20 mots ou moins \| voix active.
+|===
+
+== Territoires
+
+* xref:region-002.adoc[Afrique]
+* xref:region-019.adoc[Amériques]
+* xref:region-142.adoc[Asie]
+* xref:region-150.adoc[Europe]
+* xref:region-009.adoc[Océanie]
