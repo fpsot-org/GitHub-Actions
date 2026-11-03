@@ -1,0 +1,3 @@
+= Québec fr
+
+Back to xref:index.adoc[Canada].

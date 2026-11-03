@@ -1,0 +1,4 @@
+= Writing fr
+include::_fpsot-terms.adoc[]
+
+See xref:keywords.adoc[Keywords], xref:#WRT-011[WRT-011] and <<gl-api>>.
