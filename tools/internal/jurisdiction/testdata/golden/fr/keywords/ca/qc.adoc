@@ -10,7 +10,7 @@ Retour à xref:index.adoc[Canada].
 
 [cols="2,2,2,2,1,2,1",options="header"]
 |===
-|Exigence |Référence internationale |Valeur FPSOT |Ce territoire |Statut |Source et version |Dernière vérification
+|Exigence |Référence internationale |Valeur FPSOT |Cette collectivité |Statut |Source et version |Dernière vérification
 
 |WRT-010: Utiliser les mots clés BCP 14.
 |RFC 2119 et RFC 8174.

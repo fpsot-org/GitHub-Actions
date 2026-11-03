@@ -1,4 +1,4 @@
-= Langage clair : comparaison par territoire
+= Langage clair : comparaison par collectivité publique
 :page-type: reference
 
 [NOTE]
@@ -17,7 +17,7 @@ Cette comparaison est informative. Elle ne constitue pas un avis juridique.
 |Phrases de 20 mots ou moins \| voix active.
 |===
 
-== Territoires
+== Collectivités publiques
 
 * xref:region-002.adoc[Afrique]
 * xref:region-019.adoc[Amériques]

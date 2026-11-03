@@ -32,16 +32,16 @@ var text = map[string]labels{
 		columns:       [7]string{"Requirement", "International baseline", "FPSOT default", "This jurisdiction", "Status", "Source and version", "Last checked"},
 	},
 	"fr": {
-		indexTitle:    "%s : comparaison par territoire",
+		indexTitle:    "%s : comparaison par collectivité publique",
 		defaults:      "Valeur FPSOT et référence internationale",
-		jurisdictions: "Territoires",
-		documented:    "(documenté)",
+		jurisdictions: "Collectivités publiques",
+		documented:    "(avec données)",
 		back:          "Retour à",
 		subdivisions:  "Subdivisions documentées",
-		stub:          "Ce territoire n'est pas encore documenté pour ce sujet. Pour l'ajouter, voir link:{contributing-url}[comment contribuer].",
+		stub:          "Cette collectivité publique n'est pas encore documentée pour ce sujet. Pour l'ajouter, voir link:{contributing-url}[comment contribuer].",
 		archived:      "Copie archivée",
 		disclaimer:    "Cette comparaison est informative. Elle ne constitue pas un avis juridique.",
-		columns:       [7]string{"Exigence", "Référence internationale", "Valeur FPSOT", "Ce territoire", "Statut", "Source et version", "Dernière vérification"},
+		columns:       [7]string{"Exigence", "Référence internationale", "Valeur FPSOT", "Cette collectivité", "Statut", "Source et version", "Dernière vérification"},
 	},
 }
 
