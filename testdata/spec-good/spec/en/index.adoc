@@ -10,6 +10,7 @@ See xref:../../docs/modules/en/pages/index.adoc[the guide].
 
 // These hosts refuse automated readers, so the link check skips them.
 See link:https://www.iso.org/standard/78907.html[ISO 24495-1] and link:https://www.legisquebec.gouv.qc.ca/fr/document/lc/C-11[the Charter].
+See also link:https://www.canada.ca/en/government/system/digital-government/policies-standards/policy-service-digital-announcements/direction-information-communication-technologies-accessibility-towards-regulatory-implementation.html[the federal direction].
 
 == Document history
 
