@@ -1,0 +1,26 @@
+= Langage clair : Canada
+:page-type: reference
+
+[NOTE]
+====
+Cette comparaison est informative. Elle ne constitue pas un avis juridique.
+====
+
+Retour à xref:../region-019.adoc[Amériques].
+
+[cols="2,2,2,2,1,2,1",options="header"]
+|===
+|Exigence |Référence internationale |Valeur FPSOT |Ce territoire |Statut |Source et version |Dernière vérification
+
+|WRT-001: Rédiger en langage clair.
+|Le lecteur trouve, comprend et utilise le texte.
+|Phrases de 20 mots ou moins \| voix active.
+|Langage clair pour le contenu Web.
+|identique
+|link:https://www.canada.ca/en/treasury-board-secretariat/services/government-communications/canada-content-style-guide.html[Canada.ca Content Style Guide], 2024, 2024-01-01. link:https://web.archive.org/web/2026/https://www.canada.ca/[Copie archivée]
+|2026-10-01
+|===
+
+== Subdivisions documentées
+
+* xref:qc.adoc[Québec]
