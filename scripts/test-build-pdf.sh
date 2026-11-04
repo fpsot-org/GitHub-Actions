@@ -44,6 +44,14 @@ if [ -f "$work/en.pdf" ]; then
   pdftotext "$work/en.pdf" - | awk '/This chapter holds one rule/{exit} /^Rules/{n++} END{exit !(n>=2)}' \
     || { echo "FAIL: en: table of contents is empty"; fail=1; }
 fi
+# A table row never breaks across two pages: each row's first and last words are on the same page.
+if [ -f "$work/en.pdf" ]; then
+  pages=$(pdfinfo "$work/en.pdf" | awk '/^Pages:/{print $2}')
+  for p in $(seq 1 "$pages"); do pdftotext -f "$p" -l "$p" "$work/en.pdf" - | grep -o 'row[0-9][0-9]\(start\|end\)' | sed "s/^/$p /"; done > "$work/rows.txt"
+  split=$(awk '{r=substr($2,4,2); if ($2 ~ /start/) s[r]=$1; else if (s[r] != $1) print "row" r}' "$work/rows.txt")
+  [ "$(grep -c start "$work/rows.txt")" = 60 ] || { echo "FAIL: en: expected 60 table rows, found $(grep -c start "$work/rows.txt")"; fail=1; }
+  [ -z "$split" ] || { echo "FAIL: en: table rows break across pages:" $split; fail=1; }
+fi
 if [ -f "$work/fr.pdf" ]; then
   pdftotext "$work/fr.pdf" - | grep -q 'Spécification, élément, ça, où, déjà' || { echo "FAIL: fr: accents lost in text"; fail=1; }
 fi
