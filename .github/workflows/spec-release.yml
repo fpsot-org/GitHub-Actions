@@ -7,7 +7,7 @@
 # The caller's job must grant `contents: write`, for the release; with read only,
 # the checks still run and only the publish step fails.
 # Then it tells the website to rebuild, through the fpsot-ci GitHub App: the caller
-# passes `secrets: inherit` and the org sets FPSOT_APP_CLIENT_ID and FPSOT_APP_PRIVATE_KEY.
+# passes `secrets: inherit` and the org sets FPSOT_CI_APP_CLIENT_ID and FPSOT_CI_APP_PRIVATE_KEY.
 name: spec-release
 on:
   workflow_call:
@@ -37,7 +37,7 @@ on:
         type: boolean
         default: false
     secrets:
-      FPSOT_APP_PRIVATE_KEY:
+      FPSOT_CI_APP_PRIVATE_KEY:
         description: Private key of the fpsot-ci GitHub App, to notify the site.
         required: false
 # No workflow-level permissions: each job states its own, and publish takes what the
@@ -111,18 +111,18 @@ jobs:
           path: .fpsot-tools
       - name: Check the App credentials
         env:
-          FPSOT_APP_CLIENT_ID: ${{ vars.FPSOT_APP_CLIENT_ID }}
+          FPSOT_CI_APP_CLIENT_ID: ${{ vars.FPSOT_CI_APP_CLIENT_ID }}
         run: bash .fpsot-tools/scripts/notify-site.sh --check
       - id: token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ vars.FPSOT_APP_CLIENT_ID }}
-          private-key: ${{ secrets.FPSOT_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.FPSOT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FPSOT_CI_APP_PRIVATE_KEY }}
           owner: fpsot-org
           repositories: fpsot-org.github.io
       - name: Notify the site
         env:
-          FPSOT_APP_CLIENT_ID: ${{ vars.FPSOT_APP_CLIENT_ID }}
+          FPSOT_CI_APP_CLIENT_ID: ${{ vars.FPSOT_CI_APP_CLIENT_ID }}
           GH_TOKEN: ${{ steps.token.outputs.token }}
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}

@@ -6,12 +6,12 @@
 # GH_TOKEN must be a token of the fpsot-ci GitHub App with access to the site repo.
 #
 # Usage: notify-site.sh [--check]   (--check: only check that the credentials are set)
-# Environment: FPSOT_APP_CLIENT_ID (only checked: a release whose notification cannot
+# Environment: FPSOT_CI_APP_CLIENT_ID (only checked: a release whose notification cannot
 # be sent must fail, not pass quietly), GH_TOKEN, REPO (owner/name), TAG.
 set -euo pipefail
 site=${SITE_REPO:-fpsot-org/fpsot-org.github.io}
-if [ -z "${FPSOT_APP_CLIENT_ID:-}" ]; then
-  echo "error: FPSOT_APP_CLIENT_ID is not set for this repository, so the site cannot be told about this release" >&2
+if [ -z "${FPSOT_CI_APP_CLIENT_ID:-}" ]; then
+  echo "error: FPSOT_CI_APP_CLIENT_ID is not set for this repository, so the site cannot be told about this release" >&2
   exit 1
 fi
 [ "${1:-}" = --check ] && exit 0
