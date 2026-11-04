@@ -70,6 +70,7 @@ jobs:
       - run: bash scripts/test-spec-generate.sh
       - run: bash scripts/test-build-pdf.sh
       - run: bash scripts/test-site-bundle.sh
+      - run: bash scripts/test-check-site-offline.sh
   spec-check-fixture:
     uses: ./.github/workflows/spec-check.yml
     with:
