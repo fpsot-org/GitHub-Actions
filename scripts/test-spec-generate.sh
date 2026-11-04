@@ -28,6 +28,9 @@ expect() { # file pattern
 expect spec/en/index.html '<abbr title="application programming interface">API</abbr>'
 expect spec/en/index.html 'href="glossary.html#gl-api"'
 expect spec/en/index.html 'id="revnumber">version 0.1.0-dev'
+# Diagrams are copied next to the pages, so an embedded image resolves.
+expect spec/en/index.html 'src="../../diagrams/hello.svg"'
+[ -f "$work/html/diagrams/hello.svg" ] || { echo "FAIL: diagrams/hello.svg not copied"; fail=1; }
 expect spec/en/index.html 'id="revdate">'
 expect spec/en/book.html 'href="#gl-api"'
 expect spec/en/book.html 'id="gl-api"'

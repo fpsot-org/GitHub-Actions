@@ -8,6 +8,9 @@ Chaque appel {abbr-api} est court.
 
 Voir xref:../../docs/modules/fr/pages/index.adoc[le guide].
 
+
+image::../../diagrams/hello.svg[Diagramme d’essai : une boîte qui dit bonjour]
+
 == Historique du document
 
 |===

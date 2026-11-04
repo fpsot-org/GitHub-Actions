@@ -1,6 +1,9 @@
 = Règles
 
 Ce chapitre contient une règle. Spécification, élément, ça, où, déjà.
+Voir link:https://fpsot.org/fr/[le site de la FPSOT].
+
+image::hello.svg[Diagramme d’essai : une boîte qui dit bonjour]
 
 == Historique du document
 

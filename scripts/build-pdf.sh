@@ -25,7 +25,20 @@ toc_title="Contents"
 [ "$lang" = fr-CA ] && toc_title="Table des matières"
 pandoc -f docbook -t odt --toc --metadata toc-title="$toc_title" --resource-path="$src_dir" --metadata lang="$lang" \
   -o "$work/book.odt" "$work/book.xml"
-python3 "$(dirname "$0")/odt-to-pdf.py" "$work/book.odt" "$work/book.pdf" "$work/profile" >"$work/soffice.log" 2>&1 \
+# pandoc drops the text alternative of images; keep it, in document order, for
+# odt-to-pdf.py to put back (PDF/UA-1 7.3).
+python3 -I - "$work/book.xml" >"$work/alts.json" <<'PY'
+import json, sys
+import xml.etree.ElementTree as ET
+ns = {"d": "http://docbook.org/ns/docbook"}
+alts = []
+kinds = {"{http://docbook.org/ns/docbook}mediaobject", "{http://docbook.org/ns/docbook}inlinemediaobject"}
+for media in (e for e in ET.parse(sys.argv[1]).getroot().iter() if e.tag in kinds):
+    phrase = media.find("d:textobject/d:phrase", ns)
+    alts.append("".join(phrase.itertext()).strip() if phrase is not None else "")
+print(json.dumps(alts, ensure_ascii=False))
+PY
+python3 "$(dirname "$0")/odt-to-pdf.py" "$work/book.odt" "$work/book.pdf" "$work/profile" "$work/alts.json" >"$work/soffice.log" 2>&1 \
   || { cat "$work/soffice.log" >&2; exit 1; }
 [ -s "$work/book.pdf" ] || { echo "LibreOffice did not write a PDF" >&2; cat "$work/soffice.log" >&2; exit 1; }
 mkdir -p "$(dirname "$out")"
