@@ -17,7 +17,7 @@ cp -r "$repo/testdata/spec-good" "$src"
 git -C "$src" init -q
 git -C "$src" -c user.name=t -c user.email=t@example.org add -A
 git -C "$src" -c user.name=t -c user.email=t@example.org -c commit.gpgsign=false commit -q -m init
-git -C "$src" -c tag.gpgsign=false tag -a v0.1.0 -m v0.1.0
+git -C "$src" -c user.name=t -c user.email=t@example.org -c tag.gpgsign=false tag -a v0.1.0 -m v0.1.0
 git -C "$src" remote add origin git@github.com:fpsot-org/fpsot-spec-good.git
 if ! bash "$here/site-bundle.sh" "$src" "$work/content" "$work/public" >"$work/bundle.log" 2>&1; then
   echo "FAIL: site-bundle.sh on a tagged repo:"; cat "$work/bundle.log"; fail=1
