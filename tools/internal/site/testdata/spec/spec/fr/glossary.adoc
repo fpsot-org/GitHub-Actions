@@ -1,0 +1,3 @@
+= Glossary fr
+
+[[gl-api]]API:: Rules.

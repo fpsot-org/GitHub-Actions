@@ -1,0 +1,6 @@
+= Americas fr
+
+Back to xref:index.adoc[Keywords].
+
+* xref:ca/index.adoc[Canada]
+* xref:fr/index.adoc[France]

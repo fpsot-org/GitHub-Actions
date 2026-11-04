@@ -1,0 +1,4 @@
+= Guide fr
+include::_fpsot-terms.adoc[]
+
+Use {abbr-api}.

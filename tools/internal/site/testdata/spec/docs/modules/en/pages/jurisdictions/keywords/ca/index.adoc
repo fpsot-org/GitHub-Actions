@@ -1,0 +1,5 @@
+= Canada en
+
+Back to xref:../region-019.adoc[Americas].
+
+* xref:qc.adoc[Québec]

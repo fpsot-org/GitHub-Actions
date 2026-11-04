@@ -1,0 +1,1 @@
+:abbr-api: xref:../../../../spec/en/glossary.adoc#gl-api[{abbr-api-html}]

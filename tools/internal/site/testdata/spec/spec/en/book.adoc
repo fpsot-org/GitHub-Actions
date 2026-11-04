@@ -1,0 +1,6 @@
+= Book en
+:doctype: book
+
+include::index.adoc[leveloffset=+1]
+
+include::glossary.adoc[leveloffset=+1]
