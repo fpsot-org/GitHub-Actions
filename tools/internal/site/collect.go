@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -28,6 +29,9 @@ type Options struct {
 
 	route func(spec, root, src string) (Page, bool, error) // test hook
 }
+
+// headerAttr matches an attribute entry, such as ":toc:" or ":sectnums!:".
+var headerAttr = regexp.MustCompile(`^:[A-Za-z0-9_][A-Za-z0-9_-]*!?:`)
 
 // frenchLabels are Asciidoctor's French labels, set on French pages.
 var frenchLabels = [][2]string{
@@ -208,6 +212,17 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, s
 	if p.Lang == "fr" {
 		for _, kv := range frenchLabels {
 			line(kv[0], kv[1])
+		}
+	}
+	// The source's own header attributes, such as :toc: or :doctype: book, would not
+	// take effect in the body: they go into the page header too.
+	for _, l := range strings.Split(string(body), "\n")[1:] {
+		l = strings.TrimRight(l, "\r")
+		if strings.TrimSpace(l) == "" {
+			break
+		}
+		if headerAttr.MatchString(l) {
+			b.WriteString(l + "\n")
 		}
 	}
 	// Roq's AsciidoctorJ resolves an include only by absolute path, so the page

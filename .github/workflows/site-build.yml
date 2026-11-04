@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Builds the fpsot.org site, for the site repo. Each spec on the site's list
-# (data/specs.yml) is its own Roq build, in parallel ("map"); the pages that are not
+# (data/specs.yml), at its highest vX.Y.Z tag with a published release, is its own Roq build, in parallel ("map"); the pages that are not
 # specs are one more build ("home"). "reduce" merges them, checks that the site makes
 # no external requests, checks every link and uploads the GitHub Pages artifact.
 # The builds run in the website builder image (fpsot-org/fpsot-website-builder).
@@ -29,7 +29,7 @@ jobs:
   specs:
     runs-on: ubuntu-24.04
     outputs:
-      repos: ${{ steps.list.outputs.repos }}
+      specs: ${{ steps.list.outputs.specs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,7 +40,11 @@ jobs:
       - id: list
         env:
           SITE: ${{ inputs.working-directory }}
-        run: echo "repos=$(bash "$TOOLS/scripts/site-build.sh" specs "$SITE")" >> "$GITHUB_OUTPUT"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          specs=$(bash "$TOOLS/scripts/site-build.sh" specs "$SITE")
+          echo "$specs"
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
   map:
     needs: specs
     runs-on: ubuntu-24.04
@@ -48,7 +52,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        repo: ${{ fromJSON(needs.specs.outputs.repos) }}
+        include: ${{ fromJSON(needs.specs.outputs.specs) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,12 +67,13 @@ jobs:
       # The checkout belongs to another user in the container: do not stamp Git data.
       - run: go build -buildvcs=false -o "$RUNNER_TEMP/bin/" ./cmd/...
         working-directory: ${{ env.TOOLS }}/tools
-      - name: Build ${{ matrix.repo }}
+      - name: Build ${{ matrix.repo }} ${{ matrix.tag }}
         env:
           REPO: ${{ matrix.repo }}
+          TAG: ${{ matrix.tag }}
           SITE: ${{ inputs.working-directory }}
         run: |
-          TOOLS_BIN="$RUNNER_TEMP/bin" bash "$TOOLS/scripts/site-build.sh" map "$SITE" "$REPO" "$RUNNER_TEMP/part"
+          TOOLS_BIN="$RUNNER_TEMP/bin" bash "$TOOLS/scripts/site-build.sh" map "$SITE" "$REPO" "$TAG" "$RUNNER_TEMP/part"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site-part-${{ matrix.repo }}

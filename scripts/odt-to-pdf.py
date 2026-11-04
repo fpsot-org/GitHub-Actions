@@ -32,8 +32,13 @@ def set_alternatives(doc, alts):
     def number(name):
         m = re.search(r"(\d+)$", name)
         return int(m.group(1)) if m else 0
-    for i, name in enumerate(sorted(graphics.getElementNames(), key=number)):
-        if i < len(alts) and alts[i]:
+    names = sorted(graphics.getElementNames(), key=number)
+    if len(alts) != len(names):
+        # Matching by position would give some images the alternative of another one.
+        sys.exit("%d text alternatives for %d image%s: pandoc dropped or added an image"
+                 % (len(alts), len(names), "" if len(names) == 1 else "s"))
+    for i, name in enumerate(names):
+        if alts[i]:
             g = graphics.getByName(name)
             g.Title = alts[i]
             g.Description = alts[i]
@@ -129,8 +134,8 @@ def main(src, out, profile, alts_file=None):
         desktop = ctx.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
         doc = desktop.loadComponentFromURL(
             uno.systemPathToFileUrl(os.path.abspath(src)), "_blank", 0, (prop("Hidden", True),))
-        alts = json.load(open(alts_file, encoding="utf-8")) if alts_file else []
-        set_alternatives(doc, alts)
+        if alts_file:
+            set_alternatives(doc, json.load(open(alts_file, encoding="utf-8")))
         rename_standard_styles(doc)
         indexes = doc.getDocumentIndexes()
         for i in range(indexes.getCount()):
