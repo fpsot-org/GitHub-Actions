@@ -6,7 +6,8 @@
 # Then it creates the GitHub release with the PDF books attached.
 # The caller's job must grant `contents: write`, for the release; with read only,
 # the checks still run and only the publish step fails.
-# The notification to the website is added later.
+# Then it tells the website to rebuild, through the fpsot-ci GitHub App: the caller
+# passes `secrets: inherit` and the org sets FPSOT_APP_CLIENT_ID and FPSOT_APP_PRIVATE_KEY.
 name: spec-release
 on:
   workflow_call:
@@ -35,6 +36,10 @@ on:
         description: Passed to spec-check.
         type: boolean
         default: false
+    secrets:
+      FPSOT_APP_PRIVATE_KEY:
+        description: Private key of the fpsot-ci GitHub App, to notify the site.
+        required: false
 # No workflow-level permissions: each job states its own, and publish takes what the
 # caller grants. Asking for more than the caller grants fails the run at startup.
 jobs:
@@ -91,3 +96,34 @@ jobs:
           mapfile -t pdfs < <(find book -name '*.pdf' 2>/dev/null | sort)
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
             --notes "See CHANGELOG.md for what changed." "${pdfs[@]}"
+  notify-site:
+    needs: publish
+    # The self-test calls this workflow from this repo, which never notifies the site.
+    if: github.repository != 'fpsot-org/GitHub-Actions'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: .fpsot-tools
+      - name: Check the App credentials
+        env:
+          FPSOT_APP_CLIENT_ID: ${{ vars.FPSOT_APP_CLIENT_ID }}
+        run: bash .fpsot-tools/scripts/notify-site.sh --check
+      - id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FPSOT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FPSOT_APP_PRIVATE_KEY }}
+          owner: fpsot-org
+          repositories: fpsot-org.github.io
+      - name: Notify the site
+        env:
+          FPSOT_APP_CLIENT_ID: ${{ vars.FPSOT_APP_CLIENT_ID }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: bash .fpsot-tools/scripts/notify-site.sh
