@@ -26,7 +26,12 @@ check_pdf() { # lang-dir lang-tag title
     chmod a+rx "$work" && chmod a+r "$pdf"
     for flavour in ua1 2b; do
       result=$(${CONTAINER:-docker} run --rm -v "$work:/data:Z" "$VERAPDF_IMAGE" --format text --flavour "$flavour" "/data/$1.pdf" 2>&1 | tail -1)
-      [[ "$result" == PASS* ]] || { echo "FAIL: $1: veraPDF $flavour: $result"; fail=1; }
+      if [[ "$result" != PASS* ]]; then
+        echo "FAIL: $1: veraPDF $flavour: $result"; fail=1
+        # The rules that failed, from the machine-readable report.
+        ${CONTAINER:-docker} run --rm -v "$work:/data:Z" "$VERAPDF_IMAGE" --format mrr --flavour "$flavour" "/data/$1.pdf" 2>/dev/null \
+          | grep -o 'clause="[^"]*" testNumber="[^"]*" status="failed"[^>]*' | sed 's/^/  /'
+      fi
     done
   fi
   grep -aq "/Lang ($2)" "$work/$1.qdf.pdf" || { echo "FAIL: $1: /Lang ($2) not set"; grep -ao '/Lang ([^)]*)' "$work/$1.qdf.pdf" | head -1; fail=1; }

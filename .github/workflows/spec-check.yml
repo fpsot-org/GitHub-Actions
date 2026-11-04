@@ -255,7 +255,11 @@ jobs:
             for flavour in ua1 2b; do
               result=$(docker run --rm -v "$RUNNER_TEMP/book:/data" "$VERAPDF_IMAGE" --format text --flavour "$flavour" "/data/$(basename "$pdf")" 2>&1 | tail -1)
               echo "$result"
-              [[ "$result" == PASS* ]] || status=1
+              if [[ "$result" != PASS* ]]; then
+                status=1
+                docker run --rm -v "$RUNNER_TEMP/book:/data" "$VERAPDF_IMAGE" --format mrr --flavour "$flavour" "/data/$(basename "$pdf")" 2>/dev/null \
+                  | grep -o 'clause="[^"]*" testNumber="[^"]*" status="failed"[^>]*' | sed 's/^/  /'
+              fi
             done
           done
           exit $status
