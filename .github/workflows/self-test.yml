@@ -69,6 +69,8 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno poppler-utils qpdf "$RUNNER_TEMP/pandoc.deb" >/dev/null
       - run: bash scripts/test-spec-generate.sh
       - run: bash scripts/test-build-pdf.sh
+        env:
+          VERAPDF_IMAGE: docker.io/verapdf/cli@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb # v1.30.3
       - run: bash scripts/test-site-bundle.sh
       - run: bash scripts/test-check-site-offline.sh
   site-build-test:

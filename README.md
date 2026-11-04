@@ -8,7 +8,7 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 
 | Workflow | Inputs | What it checks |
 |---|---|---|
-| `spec-check.yml` | `prefix` (required), `strict` (false), `working-directory` (`.`), `tools-ref` (`v0`), `writing-ref`, `doc-ref`, `termbase-file`, `model-file`, `doc-rules` (false), `contributing-url` | Generates the term attributes, glossaries and jurisdiction pages (`scripts/spec-generate.sh`), renders `spec/` and `docs/` with each page's version and date (`scripts/spec-render.sh`), builds the book as tagged PDF, checks every link (except iso.org, LégisQuébec, CanLII and www.canada.ca, which refuse automated readers), requirement IDs, English/French parity and the prose. With `doc-rules`, also runs `doccheck`. The term base and the jurisdiction model come from the highest `v0` tag of `fpsot-spec-writing` and `fpsot-spec-doc` unless a ref is given. |
+| `spec-check.yml` | `prefix` (required), `strict` (false), `working-directory` (`.`), `tools-ref` (`v0`), `writing-ref`, `doc-ref`, `termbase-file`, `model-file`, `doc-rules` (false), `contributing-url` | Generates the term attributes, glossaries and jurisdiction pages (`scripts/spec-generate.sh`), renders `spec/` and `docs/` with each page's version and date (`scripts/spec-render.sh`), builds the book as tagged PDF and checks it with veraPDF (PDF/UA-1 and PDF/A-2b), checks every link (except iso.org, LégisQuébec, CanLII and www.canada.ca, which refuse automated readers), requirement IDs, English/French parity and the prose. With `doc-rules`, also runs `doccheck`. The term base and the jurisdiction model come from the highest `v0` tag of `fpsot-spec-writing` and `fpsot-spec-doc` unless a ref is given. |
 | `pr-title.yml` | none | The pull request title follows Conventional Commits 1.0.0. The caller job must grant `pull-requests: read`. |
 | `diagrams.yml` | `working-directory` (`.`) | Renders `diagrams/**/*.puml` with a pinned PlantUML and fails when a committed SVG is missing or out of date. The rendered SVGs are in the `diagrams-svg` artifact: commit those, because fonts differ between machines. |
 | `signed-commits.yml` | `tools-ref` (`v0`) | On a pull request: GitHub verified the signature of every commit. The caller job must grant `pull-requests: read`. |
@@ -30,7 +30,7 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 - `scripts/site-bundle.sh`: generates a spec checked out at a release tag and runs `sitecollect` on it.
 - `scripts/site-build.sh`: the steps of `site-build.yml` (`specs`, `map`, `home`, `reduce`), for local runs too.
 - `scripts/check-site-offline.sh`: a built site makes no request to another host and runs no script other than the theme toggle.
-- `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice.
+- `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice. It keeps the text alternative of each image and names each link, which PDF/UA-1 requires.
 - `scripts/resolve-major-tag.sh` and `scripts/fetch-spec-file.sh`: take a file from another spec at its highest `v0` tag.
 
 ## Rules for this repository

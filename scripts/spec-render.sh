@@ -7,6 +7,7 @@
 # the date of the last commit. Partials (names starting with "_") are not rendered.
 # Pages under spec/fr/ and docs/modules/fr/ are marked lang="fr" and use French labels. No page has a
 # "Last updated" footer: that time is the checkout time, not the page's date.
+# The SVG diagrams in diagrams/ are copied to OUT_DIR/diagrams/.
 #
 # Usage: spec-render.sh OUT_DIR
 # Environment: SPEC_VERSION (default "unreleased"), CONTRIBUTING_URL,
@@ -52,4 +53,9 @@ fi
 if [ "${#gen_fr[@]}" -gt 0 ]; then
   mapfile -t la < <(lang_attrs "${gen_fr[0]}")
   asciidoctor "${common[@]}" "${la[@]}" -a "revdate=$today" "${gen_fr[@]}"
+fi
+# Diagrams sit next to the pages, as in the repo, so an embedded image resolves.
+if compgen -G "diagrams/*.svg" >/dev/null; then
+  mkdir -p "$out/diagrams"
+  cp diagrams/*.svg "$out/diagrams/"
 fi

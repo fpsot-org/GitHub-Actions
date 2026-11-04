@@ -1,6 +1,9 @@
 = Rules
 
 This chapter holds one rule.
+See link:https://fpsot.org/[the FPSOT site] and the <<_document_history,document history>>.
+
+image::hello.svg[Test diagram: one box that says hello]
 
 == Document history
 
