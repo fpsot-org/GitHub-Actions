@@ -6,7 +6,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 data="$here/../testdata/site-offline"
 fail=0
 out=$(bash "$here/check-site-offline.sh" "$data/good" 2>&1) || { echo "FAIL: good site rejected: $out"; fail=1; }
-for bad in bad-cdn bad-script bad-css; do
+for bad in bad-cdn bad-script bad-css bad-style-tag bad-style-attr bad-svg-image bad-base bad-refresh bad-onclick bad-inline-script; do
   if out=$(bash "$here/check-site-offline.sh" "$data/$bad" 2>&1); then
     echo "FAIL: $bad accepted"; fail=1
   elif ! grep -q "$bad/" <<<"$out"; then
