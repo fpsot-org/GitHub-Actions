@@ -1,5 +1,6 @@
 = Book en
 :doctype: book
+:toc:
 
 include::index.adoc[leveloffset=+1]
 
