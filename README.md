@@ -13,6 +13,7 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 | `diagrams.yml` | `working-directory` (`.`) | Renders `diagrams/**/*.puml` with a pinned PlantUML and fails when a committed SVG is missing or out of date. The rendered SVGs are in the `diagrams-svg` artifact: commit those, because fonts differ between machines. |
 | `signed-commits.yml` | `tools-ref` (`v0`) | On a pull request: GitHub verified the signature of every commit. The caller job must grant `pull-requests: read`. |
 | `spec-release.yml` | `prefix` (required), `working-directory` (`.`), `tools-ref` (`v0`), `writing-ref`, `doc-ref`, `doc-rules` (false) | On a release tag: the tag is an annotated `vX.Y.Z` whose signature GitHub verified, then `spec-check` runs in strict mode, then the GitHub release is created with the PDF books. The caller job must grant `contents: write`. |
+| `site-build.yml` | `tools-ref` (`v0`), `working-directory` (`.`), `builder-image` (pinned) | For the site repo: builds each spec listed in `data/specs.yml` in its own Roq build, in parallel, and the home pages in one more. Merges them, checks that the site makes no external requests, checks every link offline and uploads the GitHub Pages artifact. The builds run in the website builder image. |
 
 ## Tools
 
@@ -27,6 +28,7 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 - `tools/cmd/sitecollect`: turns one generated spec into content for the fpsot.org site.
   It places each page at its site URL and rewrites the links between pages to site URLs.
 - `scripts/site-bundle.sh`: generates a spec checked out at a release tag and runs `sitecollect` on it.
+- `scripts/site-build.sh`: the steps of `site-build.yml` (`specs`, `map`, `home`, `reduce`), for local runs too.
 - `scripts/check-site-offline.sh`: a built site makes no request to another host and runs no script other than the theme toggle.
 - `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice.
 - `scripts/resolve-major-tag.sh` and `scripts/fetch-spec-file.sh`: take a file from another spec at its highest `v0` tag.

@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Builds the fpsot.org site, for the site repo. Each spec on the site's list
+# (data/specs.yml) is its own Roq build, in parallel ("map"); the pages that are not
+# specs are one more build ("home"). "reduce" merges them, checks that the site makes
+# no external requests, checks every link and uploads the GitHub Pages artifact.
+# The builds run in the website builder image (fpsot-org/fpsot-website-builder).
+name: site-build
+on:
+  workflow_call:
+    inputs:
+      tools-ref:
+        description: Ref of fpsot-org/GitHub-Actions to take the tools from.
+        type: string
+        default: v0
+      working-directory:
+        description: Folder of the site in the calling repo.
+        type: string
+        default: .
+      builder-image:
+        description: The website builder image, pinned by digest.
+        type: string
+        default: ghcr.io/fpsot-org/fpsot-website-builder@sha256:ac76e576a36cab1505f9bf057301a58a585b7eb0028aa6b1a24920a867d034fc
+permissions:
+  contents: read
+env:
+  TOOLS: .fpsot-tools
+jobs:
+  specs:
+    runs-on: ubuntu-24.04
+    outputs:
+      repos: ${{ steps.list.outputs.repos }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: ${{ env.TOOLS }}
+      - id: list
+        env:
+          SITE: ${{ inputs.working-directory }}
+        run: echo "repos=$(bash "$TOOLS/scripts/site-build.sh" specs "$SITE")" >> "$GITHUB_OUTPUT"
+  map:
+    needs: specs
+    runs-on: ubuntu-24.04
+    container: ${{ inputs.builder-image }}
+    strategy:
+      fail-fast: true
+      matrix:
+        repo: ${{ fromJSON(needs.specs.outputs.repos) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: ${{ env.TOOLS }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.TOOLS }}/tools/go.mod
+          cache: false
+      # The checkout belongs to another user in the container: do not stamp Git data.
+      - run: go build -buildvcs=false -o "$RUNNER_TEMP/bin/" ./cmd/...
+        working-directory: ${{ env.TOOLS }}/tools
+      - name: Build ${{ matrix.repo }}
+        env:
+          REPO: ${{ matrix.repo }}
+          SITE: ${{ inputs.working-directory }}
+        run: |
+          TOOLS_BIN="$RUNNER_TEMP/bin" bash "$TOOLS/scripts/site-build.sh" map "$SITE" "$REPO" "$RUNNER_TEMP/part"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-part-${{ matrix.repo }}
+          path: ${{ runner.temp }}/part
+          if-no-files-found: error
+  home:
+    runs-on: ubuntu-24.04
+    container: ${{ inputs.builder-image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: ${{ env.TOOLS }}
+      - env:
+          SITE: ${{ inputs.working-directory }}
+        run: bash "$TOOLS/scripts/site-build.sh" home "$SITE" "$RUNNER_TEMP/part"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-part-home
+          path: ${{ runner.temp }}/part
+          if-no-files-found: error
+  reduce:
+    needs: [map, home]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/GitHub-Actions
+          ref: ${{ inputs.tools-ref }}
+          path: ${{ env.TOOLS }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: site-part-*
+          path: parts
+      - name: Merge the parts
+        run: bash "$TOOLS/scripts/site-build.sh" reduce site parts/*
+      - name: Check that the site makes no external requests
+        run: bash "$TOOLS/scripts/check-site-offline.sh" site
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --offline --no-progress --include-fragments --index-files index.html
+            --root-dir "${{ github.workspace }}/site"
+            'site/**/*.html'
+          fail: true
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
