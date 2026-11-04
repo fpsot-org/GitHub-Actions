@@ -9,6 +9,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# Run from the work folder, so a relative path never writes into the repo.
+cd "$work"
 fail=0
 # TOOLS_BIN may hold the tools already built, for a run where Go is not installed.
 if [ ! -x "${TOOLS_BIN:-}/sitecollect" ]; then
