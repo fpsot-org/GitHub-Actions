@@ -1,0 +1,10 @@
+{#let lang=(page.data.getString('lang') ?: 'en')}
+<!DOCTYPE html>
+<html lang="{lang}">
+<head><meta charset="utf-8"><title>{page.title}</title></head>
+<body>
+<p>Version {page.data.version}</p>
+{#insert /}
+</body>
+</html>
+{/let}

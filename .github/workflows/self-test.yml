@@ -71,6 +71,21 @@ jobs:
       - run: bash scripts/test-build-pdf.sh
       - run: bash scripts/test-site-bundle.sh
       - run: bash scripts/test-check-site-offline.sh
+  site-build-test:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/fpsot-org/fpsot-website-builder@sha256:ac76e576a36cab1505f9bf057301a58a585b7eb0028aa6b1a24920a867d034fc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tools/go.mod
+          cache: false
+      - run: bash scripts/test-site-build.sh
+  site-build-callable:
+    uses: ./.github/workflows/site-build.yml
+    with:
+      tools-ref: ${{ github.sha }}
+      working-directory: testdata/site-min
   spec-check-fixture:
     uses: ./.github/workflows/spec-check.yml
     with:
