@@ -12,7 +12,7 @@ trap 'rm -rf "$work"' EXIT
 fail=0
 # TOOLS_BIN may hold the tools already built, for a run where Go is not installed.
 if [ ! -x "${TOOLS_BIN:-}/sitecollect" ]; then
-  (cd "$repo/tools" && go build -o "$work/bin/" ./cmd/...) || exit 1
+  (cd "$repo/tools" && go build -buildvcs=false -o "$work/bin/" ./cmd/...) || exit 1
   TOOLS_BIN="$work/bin"
 fi
 export TOOLS_BIN TERMBASE="$repo/testdata/terms.yaml" SPEC_SOURCE_DIR="$work/repos"
