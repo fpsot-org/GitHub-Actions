@@ -39,6 +39,49 @@ def set_alternatives(doc, alts):
             g.Description = alts[i]
 
 
+# Standard structure types of ISO 32000-1, 14.8.4. A paragraph style with one of these
+# names (pandoc's "Figure") becomes a RoleMap entry that remaps a standard type in
+# older LibreOffice versions, which PDF/UA-1 7.1 forbids.
+STANDARD_TYPES = {
+    "Document", "Part", "Art", "Sect", "Div", "BlockQuote", "Caption", "TOC", "TOCI",
+    "Index", "NonStruct", "Private", "P", "H", "H1", "H2", "H3", "H4", "H5", "H6", "L",
+    "LI", "Lbl", "LBody", "Table", "TR", "TH", "TD", "THead", "TBody", "TFoot", "Span",
+    "Quote", "Note", "Reference", "BibEntry", "Code", "Link", "Annot", "Ruby", "RB",
+    "RT", "RP", "Warichu", "WT", "WP", "Figure", "Formula", "Form",
+}
+
+
+def paragraphs(text):
+    """Yields every paragraph of a text, recursing into tables."""
+    items = text.createEnumeration()
+    while items.hasMoreElements():
+        item = items.nextElement()
+        if item.supportsService("com.sun.star.text.TextTable"):
+            for cell in item.getCellNames():
+                yield from paragraphs(item.getCellByName(cell).getText())
+        else:
+            yield item
+
+
+def rename_standard_styles(doc):
+    """Moves paragraphs off user-defined styles named after a standard structure type."""
+    styles = doc.getStyleFamilies().getByName("ParagraphStyles")
+    renamed = {}
+    for name in styles.getElementNames():
+        style = styles.getByName(name)
+        if name in STANDARD_TYPES and style.isUserDefined():
+            new = name + " paragraph"
+            if not styles.hasByName(new):
+                copy = doc.createInstance("com.sun.star.style.ParagraphStyle")
+                styles.insertByName(new, copy)
+                copy.ParentStyle = name
+            renamed[name] = new
+    if renamed:
+        for para in paragraphs(doc.getText()):
+            if para.ParaStyleName in renamed:
+                para.ParaStyleName = renamed[para.ParaStyleName]
+
+
 def name_links(text):
     """Names each hyperlink that has no name after its text, recursing into tables."""
     paragraphs = text.createEnumeration()
@@ -86,6 +129,7 @@ def main(src, out, profile, alts_file=None):
             uno.systemPathToFileUrl(os.path.abspath(src)), "_blank", 0, (prop("Hidden", True),))
         alts = json.load(open(alts_file, encoding="utf-8")) if alts_file else []
         set_alternatives(doc, alts)
+        rename_standard_styles(doc)
         indexes = doc.getDocumentIndexes()
         for i in range(indexes.getCount()):
             indexes.getByIndex(i).update()
