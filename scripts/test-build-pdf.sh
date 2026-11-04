@@ -47,5 +47,14 @@ fi
 if [ -f "$work/fr.pdf" ]; then
   pdftotext "$work/fr.pdf" - | grep -q 'Spécification, élément, ça, où, déjà' || { echo "FAIL: fr: accents lost in text"; fail=1; }
 fi
+# A text alternative per image: when the counts differ, odt-to-pdf.py fails rather
+# than give an image the alternative of another one.
+asciidoctor -b docbook5 -d book -o "$work/count.xml" "$here/testdata/book/en/book.adoc"
+pandoc -f docbook -t odt --resource-path="$here/testdata/book/en" -o "$work/count.odt" "$work/count.xml"
+echo '["one", "two"]' > "$work/count-alts.json"
+if python3 "$here/odt-to-pdf.py" "$work/count.odt" "$work/count.pdf" "$work/count-profile" "$work/count-alts.json" >"$work/count.log" 2>&1; then
+  echo "FAIL: odt-to-pdf.py accepted 2 text alternatives for 1 image"; fail=1
+fi
+grep -q '2 text alternatives for 1 image' "$work/count.log" || { echo "FAIL: count message missing:"; cat "$work/count.log"; fail=1; }
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail
