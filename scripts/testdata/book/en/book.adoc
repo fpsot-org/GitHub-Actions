@@ -3,3 +3,5 @@
 :toc:
 
 include::chapter.adoc[leveloffset=+1]
+
+include::sources.adoc[leveloffset=+1]
