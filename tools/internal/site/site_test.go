@@ -168,6 +168,7 @@ func TestCollectHeader(t *testing.T) {
 		":page-link: /fr/writing/keywords/",
 		":page-lang: fr",
 		":page-spec: writing",
+		":page-spec-title: Writing fr",
 		":page-version: 0.1.1",
 		":page-updated: 2026-10-02",
 		":page-alternate: /writing/keywords/",

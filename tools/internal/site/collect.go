@@ -125,6 +125,15 @@ func Collect(opt Options) error {
 		return p.URL, ok
 	}
 
+	// The title of each language's spec index names the spec on every page.
+	specTitles := map[string]string{}
+	for _, lang := range []string{"en", "fr"} {
+		if body, err := os.ReadFile(filepath.Join(opt.SrcDir, "spec", lang, "index.adoc")); err == nil {
+			if title, _, _ := strings.Cut(string(body), "\n"); strings.HasPrefix(title, "= ") {
+				specTitles[lang] = strings.TrimSpace(strings.TrimPrefix(title, "= "))
+			}
+		}
+	}
 	mirror := filepath.Join(opt.OutDir, "_src", opt.Spec)
 	for _, src := range files {
 		from := filepath.Join(opt.SrcDir, filepath.FromSlash(src))
@@ -149,7 +158,7 @@ func Collect(opt Options) error {
 			return err
 		}
 		if p, ok := pages[src]; ok {
-			page, err := pageFile(opt, p, body, pages, mirror)
+			page, err := pageFile(opt, p, body, pages, mirror, specTitles[p.Lang])
 			if err != nil {
 				problems = append(problems, err.Error())
 				continue
@@ -167,7 +176,7 @@ func Collect(opt Options) error {
 
 // pageFile builds the page Roq renders: the source's title, the header block, and
 // an include of the rest of the source from the mirror.
-func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror string) ([]byte, error) {
+func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, specTitle string) ([]byte, error) {
 	title, _, _ := strings.Cut(string(body), "\n")
 	title = strings.TrimRight(strings.TrimPrefix(title, "\ufeff"), "\r")
 	if !strings.HasPrefix(title, "= ") {
@@ -184,6 +193,9 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror st
 	line("page-link", p.URL)
 	line("page-lang", p.Lang)
 	line("page-spec", opt.Spec)
+	if specTitle != "" {
+		line("page-spec-title", specTitle)
+	}
 	line("page-version", opt.Version)
 	line("page-updated", date)
 	if alt, ok := pages[otherLang(p)]; ok {
