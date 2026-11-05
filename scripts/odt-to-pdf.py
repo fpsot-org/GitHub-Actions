@@ -112,6 +112,18 @@ def name_links(text):
             names.setdefault(url, portion.HyperLinkName)
 
 
+def keep_link_paragraphs_together(text):
+    """Keeps each paragraph that holds a link on one page. A link that breaks across
+    two pages leaves its second part out of the tags (PDF/UA-1, clause 7.18.5).
+    Specification paragraphs are short, so keeping them whole costs little space."""
+    for para in paragraphs(text):
+        portions = para.createEnumeration()
+        while portions.hasMoreElements():
+            if portions.nextElement().HyperLinkURL:
+                para.ParaSplit = False
+                break
+
+
 def keep_rows_together(doc):
     """Keep each table row on one page. A row that breaks across two pages leaves
     the second part of its links out of the tags (PDF/UA-1, clause 7.18.5)."""
@@ -148,6 +160,7 @@ def main(src, out, profile, alts_file=None):
             set_alternatives(doc, json.load(open(alts_file, encoding="utf-8")))
         rename_standard_styles(doc)
         keep_rows_together(doc)
+        keep_link_paragraphs_together(doc.getText())
         indexes = doc.getDocumentIndexes()
         for i in range(indexes.getCount()):
             indexes.getByIndex(i).update()
