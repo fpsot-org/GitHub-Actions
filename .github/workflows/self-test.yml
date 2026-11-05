@@ -73,6 +73,7 @@ jobs:
           VERAPDF_IMAGE: docker.io/verapdf/cli@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb # v1.30.3
       - run: bash scripts/test-site-bundle.sh
       - run: bash scripts/test-check-site-offline.sh
+      - run: bash scripts/test-notify-site.sh
   site-build-test:
     runs-on: ubuntu-24.04
     container: ghcr.io/fpsot-org/fpsot-website-builder@sha256:ac76e576a36cab1505f9bf057301a58a585b7eb0028aa6b1a24920a867d034fc
