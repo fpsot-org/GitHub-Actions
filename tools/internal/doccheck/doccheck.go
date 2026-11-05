@@ -228,8 +228,19 @@ var (
 	// A GitHub file link pinned to a full commit hash cannot change: it is its own
 	// archived copy.
 	pinnedGitHub = regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/(?:blob|tree)/[0-9a-f]{40}/`)
-	sourceAttr   = regexp.MustCompile(`^\[source,\s*[A-Za-z0-9_+-]+`)
+	sourceAttr   = regexp.MustCompile(`^\[(?:source)?[%#.\w-]*,\s*[\w+-]+`)
+	crossRef     = regexp.MustCompile(`xref:[^\s\[]*\[[^\]]*\]|<<[^>]*>>`)
 )
+
+// cleanURL drops what Asciidoctor leaves out of a bare URL (trailing punctuation)
+// and the fragment, so that a deep link matches its source's References entry.
+func cleanURL(u string) string {
+	u = strings.TrimRight(u, ".,;:!?)")
+	if i := strings.Index(u, "#"); i >= 0 {
+		u = u[:i]
+	}
+	return u
+}
 
 // outside reports whether url points outside the project: not fpsot.org, not the
 // fpsot-org GitHub organisation, not an archived copy and not an example domain.
@@ -274,18 +285,26 @@ func References(files []string) []Finding {
 		var body []link
 		listed := map[string]bool{}
 		var sections []string
-		refLine, inRefs := 0, false
+		refLine, inRefs, inHistory := 0, false, false
 		err := lines(file, func(n int, line string) {
 			if strings.HasPrefix(line, "== ") {
 				title := strings.TrimSpace(line[3:])
 				sections = append(sections, title)
 				inRefs = title == referencesHeading[lang]
+				inHistory = title == historyHeading[lang]
 				if inRefs {
 					refLine = n
 				}
 				return
 			}
-			urls := urlPattern.FindAllString(monospace.ReplaceAllString(line, ""), -1)
+			// Past history rows record what changed then; they are not citations.
+			if inHistory {
+				return
+			}
+			var urls []string
+			for _, u := range urlPattern.FindAllString(monospace.ReplaceAllString(line, ""), -1) {
+				urls = append(urls, cleanURL(u))
+			}
 			if inRefs {
 				hasArchive, cites := false, false
 				for _, u := range urls {
@@ -310,7 +329,7 @@ func References(files []string) []Finding {
 				}
 			}
 			// An RFC named outside a link's text is not linked to its source.
-			plain := linkMacro.ReplaceAllString(monospace.ReplaceAllString(line, ""), "")
+			plain := crossRef.ReplaceAllString(linkMacro.ReplaceAllString(monospace.ReplaceAllString(line, ""), ""), "")
 			for _, m := range rfcMention.FindAllStringSubmatch(plain, -1) {
 				out = append(out, Finding{file, n, fmt.Sprintf("RFC %s is named without a link to it (https://www.rfc-editor.org/info/rfc%s)", m[1], m[1])})
 			}
@@ -360,7 +379,8 @@ func CodeLanguage(files []string) []Finding {
 				}
 				open = !open
 			}
-			if strings.TrimSpace(line) != "" || open {
+			trimmed := strings.TrimSpace(line)
+			if open || (trimmed != "" && !(strings.HasPrefix(trimmed, ".") && !strings.HasPrefix(trimmed, ".."))) {
 				prev = line
 			}
 		}

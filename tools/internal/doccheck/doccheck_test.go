@@ -190,3 +190,19 @@ func TestReferencesCommitPinnedGitHub(t *testing.T) {
 	// The commit-pinned link cannot change, so it is its own archived copy; a tag can move.
 	one(t, References([]string{filepath.Join(root, "spec/en/events.adoc")}), "archived copy")
 }
+
+func TestReferencesURLMatching(t *testing.T) {
+	body := "= HTTP\n\nSee https://www.rfc-editor.org/info/rfc9110. Also (https://semver.org/spec/v2.0.0.html) and link:https://www.rfc-editor.org/rfc/rfc9110#section-9[section 9].\nSee xref:other.adoc[RFC 7396] and <<x,RFC 9457>>.\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/x[Archived copy]\n* link:https://semver.org/spec/v2.0.0.html[SemVer]. link:https://web.archive.org/web/1/y[Archived copy]\n* link:https://www.rfc-editor.org/rfc/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/z[Archived copy]\n\n== Document history\n\n|===\n|Version |Date |Change\n|0.1.0 |2026-11-02 |Follows RFC 8174 and https://example.org/x.\n|0.1.1 |2026-11-03 |See https://www.w3.org/TR/old/.\n|===\n"
+	root := tree(t, map[string]string{"spec/en/http.adoc": body})
+	if got := References([]string{filepath.Join(root, "spec/en/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings (punctuation trimmed, fragment ignored, xref and history skipped), got %+v", got)
+	}
+}
+
+func TestCodeLanguageForms(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/code.adoc": "= Code\n\n[source%linenums,json]\n----\n{}\n----\n\n[,yaml]\n----\na: 1\n----\n\n[source,json]\n.Example\n----\n{}\n----\n\n[source%linenums]\n----\nx\n----\n" + refHist})
+	got := CodeLanguage([]string{filepath.Join(root, "spec/en/code.adoc")})
+	if len(got) != 1 || got[0].Line != 20 {
+		t.Fatalf("want 1 finding at line 20, got %+v", got)
+	}
+}
