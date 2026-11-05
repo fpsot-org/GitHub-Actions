@@ -295,10 +295,21 @@ public class ProseLint {
         List<String> para = new ArrayList<>();
         int start = 0;
         String openBlock = null;
+        boolean inReferences = false;
         int lineNo = 0;
         for (String raw : text.split("\n", -1)) {
             lineNo++;
             String line = raw.strip();
+            // A References section lists the exact titles of outside sources: they are
+            // not our prose, so the section is skipped up to the next level-1 heading.
+            if (openBlock == null && line.startsWith("== ")) {
+                String title = line.substring(3).strip();
+                inReferences = title.equals("References") || title.equals("Références");
+            }
+            if (inReferences) {
+                flush(out, para, start);
+                continue;
+            }
             if (ADOC_DELIMITERS.contains(line)) {
                 flush(out, para, start);
                 boolean verbatim = !line.equals("====") && !line.equals("****");

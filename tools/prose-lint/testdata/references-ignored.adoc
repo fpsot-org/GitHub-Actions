@@ -1,0 +1,14 @@
+= Page
+
+A short page.
+
+== References
+
+=== Normative
+
+* link:https://www.rfc-editor.org/info/rfc8259[RFC 8259, The JavaScript Object Notation (JSON) Data Interchange Format], IETF, 2017-12. link:https://web.archive.org/web/1/x[Archived copy]
+* link:https://www.iso.org/standard/70907.html[ISO 8601-1:2019, Date and time — Representations for information interchange — Part 1: Basic rules], ISO, 2019-02.
+
+== Document history
+
+The history (with a note) stays checked.

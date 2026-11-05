@@ -225,7 +225,10 @@ var (
 	archiveHost       = "https://web.archive.org/"
 	linkMacro         = regexp.MustCompile(`(?:link:)?https?://[^\s\[\]]+\[[^\]]*\]`)
 	rfcMention        = regexp.MustCompile(`(?:\{abbr-rfc(?:-first)?\}|\bRFC) ?([0-9]{3,5})\b`)
-	sourceAttr        = regexp.MustCompile(`^\[source,\s*[A-Za-z0-9_+-]+`)
+	// A GitHub file link pinned to a full commit hash cannot change: it is its own
+	// archived copy.
+	pinnedGitHub = regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/(?:blob|tree)/[0-9a-f]{40}/`)
+	sourceAttr   = regexp.MustCompile(`^\[source,\s*[A-Za-z0-9_+-]+`)
 )
 
 // outside reports whether url points outside the project: not fpsot.org, not the
@@ -291,10 +294,13 @@ func References(files []string) []Finding {
 					} else if outside(u) {
 						listed[u] = true
 						cites = true
+						if pinnedGitHub.MatchString(u) {
+							hasArchive = true
+						}
 					}
 				}
 				if cites && !hasArchive {
-					out = append(out, Finding{file, n, "references entry has no archived copy (a web.archive.org link)"})
+					out = append(out, Finding{file, n, "references entry has no archived copy (a web.archive.org link, or a GitHub link pinned to a commit)"})
 				}
 				return
 			}

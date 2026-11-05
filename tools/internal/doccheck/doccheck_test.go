@@ -181,3 +181,12 @@ func TestReferencesUnlinkedRFC(t *testing.T) {
 		t.Fatalf("want 2 unlinked RFC findings, got %+v", got)
 	}
 }
+
+func TestReferencesCommitPinnedGitHub(t *testing.T) {
+	pinned := "https://github.com/cloudevents/spec/blob/fc1f6f31f5f011a72183f1bcea20c987cb683ade/cloudevents/spec.md"
+	tag := "https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md"
+	body := "= Events\n\nSee link:" + pinned + "[CloudEvents] and link:" + tag + "[CloudEvents].\n\n== References\n\n=== Normative\n\n* link:" + pinned + "[CloudEvents 1.0.2], CNCF, 2022-02.\n* link:" + tag + "[CloudEvents 1.0.2], CNCF, 2022-02.\n" + refHist
+	root := tree(t, map[string]string{"spec/en/events.adoc": body})
+	// The commit-pinned link cannot change, so it is its own archived copy; a tag can move.
+	one(t, References([]string{filepath.Join(root, "spec/en/events.adoc")}), "archived copy")
+}
