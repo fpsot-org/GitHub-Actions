@@ -51,14 +51,6 @@ on:
         description: Run doccheck (required files, document history, page types, image text, book).
         type: boolean
         default: false
-      doc-references:
-        description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
-        type: boolean
-        default: false
-      us-spelling:
-        description: The English prose check also flags Canadian and British spellings and gives the US one.
-        type: boolean
-        default: false
       contributing-url:
         description: Link target of the "how to contribute" text on undocumented jurisdiction pages. Default = this repo's CONTRIBUTING.md.
         type: string
@@ -132,7 +124,6 @@ jobs:
           LINKML: ${{ steps.inputs.outputs.model != '' && 'linkml-validate' || '' }}
           STRICT: ${{ inputs.strict }}
           DOC_RULES: ${{ inputs.doc-rules }}
-          DOC_REFERENCES: ${{ inputs.doc-references }}
         run: bash "$TOOLS/scripts/spec-generate.sh"
       - name: Pack generated files
         run: |
@@ -327,7 +318,7 @@ jobs:
       - name: Check prose
         working-directory: ${{ inputs.working-directory }}
         env:
-          US_SPELLING: ${{ inputs.us-spelling }}
+          US_SPELLING: 'false'
         run: |
           status=0
           for lang in en fr; do

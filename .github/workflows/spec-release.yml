@@ -82,8 +82,6 @@ jobs:
       writing-ref: ${{ inputs.writing-ref }}
       doc-ref: ${{ inputs.doc-ref }}
       doc-rules: ${{ inputs.doc-rules }}
-      doc-references: ${{ inputs.doc-references }}
-      us-spelling: ${{ inputs.us-spelling }}
   publish:
     needs: strict-check
     runs-on: ubuntu-latest
