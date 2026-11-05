@@ -317,15 +317,14 @@ jobs:
           java-version: '17'
       - name: Check prose
         working-directory: ${{ inputs.working-directory }}
-        env:
-          US_SPELLING: 'false'
         run: |
           status=0
           for lang in en fr; do
             mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' ! -name '_*' 2>/dev/null | sort)
             [ "${#files[@]}" -eq 0 ] && continue
             extra=()
-            [ "$lang" = en ] && [ "$US_SPELLING" = true ] && extra=(--us-spelling)
+            # A spec repo opts in to US spelling with a line "us-spelling" in .fpsot-checks.
+            [ "$lang" = en ] && grep -qx 'us-spelling' .fpsot-checks 2>/dev/null && extra=(--us-spelling)
             java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${extra[@]}" "${files[@]}" || status=1
           done
           exit $status

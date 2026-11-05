@@ -35,14 +35,6 @@ on:
         description: Passed to spec-check.
         type: boolean
         default: false
-      doc-references:
-        description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
-        type: boolean
-        default: false
-      us-spelling:
-        description: The English prose check also flags Canadian and British spellings and gives the US one.
-        type: boolean
-        default: false
 # No workflow-level permissions: each job states its own, and publish takes what the
 # caller grants. Asking for more than the caller grants fails the run at startup.
 jobs:

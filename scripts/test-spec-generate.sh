@@ -52,5 +52,13 @@ if (cd "$work/bad" && bash "$here/spec-generate.sh") >"$work/bad.log" 2>&1; then
   echo "FAIL: spec-bad-history should fail"; fail=1
 fi
 grep -q 'must end with "== Document history"' "$work/bad.log" || { echo "FAIL: bad-history message missing:"; cat "$work/bad.log"; fail=1; }
+# A line "references" in .fpsot-checks turns on the References checks: spec-good
+# links to outside sources without a References section.
+cp -r "$repo/testdata/spec-good" "$work/refs"
+printf 'references\n' > "$work/refs/.fpsot-checks"
+if (cd "$work/refs" && bash "$here/spec-generate.sh") >"$work/refs.log" 2>&1; then
+  echo "FAIL: spec-good with .fpsot-checks 'references' should fail"; fail=1
+fi
+grep -q 'needs a "== References" section' "$work/refs.log" || { echo "FAIL: references message missing:"; cat "$work/refs.log"; fail=1; }
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

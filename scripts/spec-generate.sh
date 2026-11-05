@@ -17,6 +17,7 @@
 #   STRICT     true: stale comparison rows fail (releases)
 #   DOC_RULES  true: run doccheck
 #   DOC_REFERENCES  true: doccheck also checks References sections and code block languages
+#              (a line "references" in the repo's .fpsot-checks does the same)
 set -uo pipefail
 : "${TOOLS_BIN:?TOOLS_BIN must point to the built tools}"
 status=0
@@ -60,7 +61,9 @@ fi
 
 if [ "${DOC_RULES:-false}" = true ]; then
   refs=()
-  [ "${DOC_REFERENCES:-false}" = true ] && refs=(-references)
+  if [ "${DOC_REFERENCES:-false}" = true ] || grep -qx 'references' .fpsot-checks 2>/dev/null; then
+    refs=(-references)
+  fi
   "$TOOLS_BIN/doccheck" -root . "${refs[@]}" || status=1
 fi
 exit $status
