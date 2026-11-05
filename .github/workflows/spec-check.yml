@@ -51,6 +51,10 @@ on:
         description: Run doccheck (required files, document history, page types, image text, book).
         type: boolean
         default: false
+      doc-references:
+        description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
+        type: boolean
+        default: false
       contributing-url:
         description: Link target of the "how to contribute" text on undocumented jurisdiction pages. Default = this repo's CONTRIBUTING.md.
         type: string
@@ -124,6 +128,7 @@ jobs:
           LINKML: ${{ steps.inputs.outputs.model != '' && 'linkml-validate' || '' }}
           STRICT: ${{ inputs.strict }}
           DOC_RULES: ${{ inputs.doc-rules }}
+          DOC_REFERENCES: ${{ inputs.doc-references }}
         run: bash "$TOOLS/scripts/spec-generate.sh"
       - name: Pack generated files
         run: |
@@ -240,7 +245,8 @@ jobs:
           name=$(basename "$GITHUB_REPOSITORY")
           for l in en fr; do
             [ -f "spec/$l/book.adoc" ] || continue
-            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$l-CA"
+            tag=en-US; [ "$l" = fr ] && tag=fr-CA
+            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$tag"
             pdfinfo "$RUNNER_TEMP/book/$name-$l.pdf" | grep -q '^Tagged: *yes'
           done
       - if: steps.has.outputs.book == 'true'

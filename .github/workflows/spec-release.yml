@@ -35,6 +35,10 @@ on:
         description: Passed to spec-check.
         type: boolean
         default: false
+      doc-references:
+        description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
+        type: boolean
+        default: false
 # No workflow-level permissions: each job states its own, and publish takes what the
 # caller grants. Asking for more than the caller grants fails the run at startup.
 jobs:
@@ -74,6 +78,7 @@ jobs:
       writing-ref: ${{ inputs.writing-ref }}
       doc-ref: ${{ inputs.doc-ref }}
       doc-rules: ${{ inputs.doc-rules }}
+      doc-references: ${{ inputs.doc-references }}
   publish:
     needs: strict-check
     runs-on: ubuntu-latest

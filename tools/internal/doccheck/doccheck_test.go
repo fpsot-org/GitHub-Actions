@@ -124,3 +124,60 @@ func TestBook(t *testing.T) {
 	}
 	one(t, Book(filepath.Join(root, "bad.adoc")), "glossary.adoc")
 }
+
+const refHist = "\n== Document history\n\n|===\n|Version |Date |Change\n|===\n"
+
+func TestReferencesMissingEntry(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nA server follows link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "https://www.rfc-editor.org/info/rfc9110")
+}
+
+func TestReferencesOK(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nA server follows link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110, HTTP Semantics], 2022-06. link:https://web.archive.org/web/2026/https://www.rfc-editor.org/info/rfc9110[Archived copy]\n" + refHist})
+	if got := References([]string{filepath.Join(root, "spec/en/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestReferencesIgnores(t *testing.T) {
+	body := "= Page\n\nSee link:https://fpsot.org/doc/[the doc spec], link:https://github.com/fpsot-org/x[the repo] and link:https://web.archive.org/web/2026/https://x.org/[a copy].\nThe type is `https://www.iana.org/not-a-citation`.\n\n[source,http]\n----\nGET https://api.example.com/v1/parties\n----\n" + refHist
+	root := tree(t, map[string]string{"spec/en/page.adoc": body})
+	if got := References([]string{filepath.Join(root, "spec/en/page.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestReferencesNoArchive(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nSee link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110, HTTP Semantics], 2022-06.\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "archived copy")
+}
+
+func TestReferencesPlacement(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nSee link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/2026/x[Archived copy]\n\n== Notes\n\nMore.\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "just before")
+}
+
+func TestReferencesFrench(t *testing.T) {
+	hist := "\n== Historique du document\n\n|===\n|Version |Date |Changement\n|===\n"
+	root := tree(t, map[string]string{"spec/fr/http.adoc": "= HTTP\n\nVoir link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== Références\n\n=== Références normatives\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/2026/x[Copie archivée]\n" + hist})
+	if got := References([]string{filepath.Join(root, "spec/fr/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestCodeLanguage(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/code.adoc": "= Code\n\n[source,json]\n----\n{}\n----\n\n[source]\n----\nx\n----\n\n----\ny\n----\n" + refHist})
+	got := CodeLanguage([]string{filepath.Join(root, "spec/en/code.adoc")})
+	if len(got) != 2 {
+		t.Fatalf("want 2 findings, got %+v", got)
+	}
+}
+
+func TestReferencesUnlinkedRFC(t *testing.T) {
+	body := "= HTTP\n\nA server follows {abbr-rfc} 9110 and RFC 9457.\nIt also follows link:https://www.rfc-editor.org/info/rfc7396[RFC 7396].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc7396[RFC 7396], 2014-10. link:https://web.archive.org/web/2026/x[Archived copy]\n" + refHist
+	root := tree(t, map[string]string{"spec/en/http.adoc": body})
+	got := References([]string{filepath.Join(root, "spec/en/http.adoc")})
+	if len(got) != 2 || !strings.Contains(got[0].Msg, "9110") || !strings.Contains(got[1].Msg, "9457") {
+		t.Fatalf("want 2 unlinked RFC findings, got %+v", got)
+	}
+}

@@ -3,8 +3,10 @@
 // Command doccheck checks an FPSOT spec repository against the documentation rules:
 // required files, a document history at the end of each page, a page type on each docs
 // page, a text alternative on each image, and a glossary at the end of each book.
+// With -references, also a References section listing each outside link, and a
+// language on each code block.
 //
-//	doccheck -root .
+//	doccheck -root . [-references]
 package main
 
 import (
@@ -25,6 +27,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fl := flag.NewFlagSet("doccheck", flag.ContinueOnError)
 	fl.SetOutput(stderr)
 	root := fl.String("root", ".", "spec repository to check")
+	refs := fl.Bool("references", false, "also check outside-source References sections and code block languages")
 	if err := fl.Parse(args); err != nil {
 		return 2
 	}
@@ -48,6 +51,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	findings = append(findings, doccheck.PageType(authored)...)
 	findings = append(findings, doccheck.ImageAlt(all)...)
+	if *refs {
+		findings = append(findings, doccheck.References(all)...)
+		findings = append(findings, doccheck.CodeLanguage(all)...)
+	}
 	for _, lang := range []string{"en", "fr"} {
 		book := filepath.Join(*root, "spec", lang, "book.adoc")
 		if _, err := os.Stat(book); err == nil {

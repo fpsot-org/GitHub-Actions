@@ -91,6 +91,50 @@ public class ProseLint {
     record Paragraph(int line, String text) {
     }
 
+    /** Canadian and British spellings mapped to the US spelling that FPSOT English uses. */
+    static final java.util.Map<String, String> US_SPELLING = usSpelling();
+
+    private static java.util.Map<String, String> usSpelling() {
+        java.util.Map<String, String> m = new java.util.HashMap<>();
+        for (String stem : List.of("organis", "summaris", "recognis", "authoris", "normalis", "prioritis",
+                "standardis", "minimis", "maximis", "optimis", "categoris", "customis", "initialis",
+                "serialis", "localis", "internationalis", "emphasis", "finalis", "harmonis", "realis",
+                "specialis", "utilis", "visualis", "synchronis", "centralis", "criticis", "apologis",
+                "characteris", "memoris", "tokenis", "sanitis", "capitalis", "analys", "paralys")) {
+            String us = stem.substring(0, stem.length() - 1) + "z";
+            for (String end : List.of("e", "es", "ed", "ing", "ation", "ations", "er", "ers")) {
+                if (stem.equals("emphasis") && !end.startsWith("e") && !end.equals("ing")) {
+                    continue;
+                }
+                m.put(stem + end, us + end);
+            }
+        }
+        for (String w : List.of("colour", "behaviour", "favour", "honour", "labour", "neighbour", "flavour",
+                "humour", "rumour", "harbour", "endeavour", "vapour")) {
+            String us = w.replace("our", "or");
+            for (String end : List.of("", "s", "ed", "ing", "able", "ite", "ites", "al")) {
+                m.put(w + end, us + end);
+            }
+        }
+        String[][] pairs = {
+            {"licence", "license"}, {"licences", "licenses"}, {"centre", "center"}, {"centres", "centers"},
+            {"centred", "centered"}, {"metre", "meter"}, {"metres", "meters"}, {"litre", "liter"},
+            {"fibre", "fiber"}, {"catalogue", "catalog"}, {"catalogues", "catalogs"},
+            {"programme", "program"}, {"programmes", "programs"}, {"defence", "defense"},
+            {"offence", "offense"}, {"travelled", "traveled"}, {"travelling", "traveling"},
+            {"cancelled", "canceled"}, {"cancelling", "canceling"}, {"modelling", "modeling"},
+            {"modelled", "modeled"}, {"labelled", "labeled"}, {"labelling", "labeling"},
+            {"judgement", "judgment"}, {"acknowledgement", "acknowledgment"}, {"enrol", "enroll"},
+            {"fulfil", "fulfill"}, {"grey", "gray"}, {"artefact", "artifact"}, {"artefacts", "artifacts"},
+        };
+        for (String[] p : pairs) {
+            m.put(p[0], p[1]);
+        }
+        return java.util.Map.copyOf(m);
+    }
+
+    private static final Pattern WORD_TOKEN = Pattern.compile("\\b[A-Za-z]+\\b");
+
     record Finding(int line, String message) {
     }
 
@@ -164,6 +208,13 @@ public class ProseLint {
                 while (m.find()) {
                     if (!NOMINAL_OK.contains(m.group(1).toLowerCase(Locale.ROOT))) {
                         findings.add(new Finding(p.line(), "nominalization \"" + m.group() + "\" (use the verb)"));
+                    }
+                }
+                m = WORD_TOKEN.matcher(s);
+                while (m.find()) {
+                    String us = US_SPELLING.get(m.group().toLowerCase(Locale.ROOT));
+                    if (us != null) {
+                        findings.add(new Finding(p.line(), "US spelling: \"" + m.group() + "\" → \"" + us + "\""));
                     }
                 }
                 m = VAGUE.matcher(s);
