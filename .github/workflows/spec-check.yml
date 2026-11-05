@@ -55,6 +55,10 @@ on:
         description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
         type: boolean
         default: false
+      us-spelling:
+        description: The English prose check also flags Canadian and British spellings and gives the US one.
+        type: boolean
+        default: false
       contributing-url:
         description: Link target of the "how to contribute" text on undocumented jurisdiction pages. Default = this repo's CONTRIBUTING.md.
         type: string
@@ -322,11 +326,15 @@ jobs:
           java-version: '17'
       - name: Check prose
         working-directory: ${{ inputs.working-directory }}
+        env:
+          US_SPELLING: ${{ inputs.us-spelling }}
         run: |
           status=0
           for lang in en fr; do
             mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' ! -name '_*' 2>/dev/null | sort)
             [ "${#files[@]}" -eq 0 ] && continue
-            java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${files[@]}" || status=1
+            extra=()
+            [ "$lang" = en ] && [ "$US_SPELLING" = true ] && extra=(--us-spelling)
+            java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${extra[@]}" "${files[@]}" || status=1
           done
           exit $status

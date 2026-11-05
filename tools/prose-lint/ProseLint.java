@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p>
  * With {@code --lang fr}, only the length checks run: the word lists behind the other checks are English.
  * <p>
- * Usage: {@code java ProseLint.java [--lang en|fr] [--max-words N] FILE...}.
+ * Usage: {@code java ProseLint.java [--lang en|fr] [--max-words N] [--us-spelling] FILE...}.
  * The exit code is 1 when a finding is reported and 2 on a usage error.
  */
 public class ProseLint {
@@ -141,10 +141,13 @@ public class ProseLint {
     public static void main(String[] args) throws IOException {
         int maxWords = 20;
         String lang = "en";
+        boolean usSpelling = false;
         List<Path> files = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--max-words") && i + 1 < args.length) {
                 maxWords = Integer.parseInt(args[++i]);
+            } else if (args[i].equals("--us-spelling")) {
+                usSpelling = true;
             } else if (args[i].equals("--lang") && i + 1 < args.length) {
                 lang = args[++i];
                 if (!lang.equals("en") && !lang.equals("fr")) {
@@ -156,7 +159,7 @@ public class ProseLint {
             }
         }
         if (files.isEmpty()) {
-            System.err.println("usage: ProseLint.java [--lang en|fr] [--max-words N] FILE...");
+            System.err.println("usage: ProseLint.java [--lang en|fr] [--max-words N] [--us-spelling] FILE...");
             System.exit(2);
         }
         int total = 0;
@@ -166,7 +169,7 @@ public class ProseLint {
                 text = text.substring(1);
             }
             boolean asciidoc = file.toString().endsWith(".adoc");
-            List<Finding> findings = lint(text, maxWords, asciidoc, lang.equals("en"));
+            List<Finding> findings = lint(text, maxWords, asciidoc, lang.equals("en"), usSpelling);
             total += findings.size();
             System.out.println("== " + file + ": " + findings.size() + " finding(s)");
             for (Finding f : findings) {
@@ -177,10 +180,14 @@ public class ProseLint {
     }
 
     static List<Finding> lint(String text, int maxWords) {
-        return lint(text, maxWords, false, true);
+        return lint(text, maxWords, false, true, false);
     }
 
     static List<Finding> lint(String text, int maxWords, boolean asciidoc, boolean english) {
+        return lint(text, maxWords, asciidoc, english, false);
+    }
+
+    static List<Finding> lint(String text, int maxWords, boolean asciidoc, boolean english, boolean usSpelling) {
         List<Finding> findings = new ArrayList<>();
         for (Paragraph p : asciidoc ? asciidocParagraphs(text) : paragraphs(text)) {
             List<String> sentences = sentences(p.text());
@@ -211,7 +218,7 @@ public class ProseLint {
                     }
                 }
                 m = WORD_TOKEN.matcher(s);
-                while (m.find()) {
+                while (usSpelling && m.find()) {
                     String us = US_SPELLING.get(m.group().toLowerCase(Locale.ROOT));
                     if (us != null) {
                         findings.add(new Finding(p.line(), "US spelling: \"" + m.group() + "\" → \"" + us + "\""));

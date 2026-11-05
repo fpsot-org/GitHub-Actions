@@ -39,6 +39,10 @@ on:
         description: With doc-rules, also check that each page lists its outside links under References and that each code block names its language.
         type: boolean
         default: false
+      us-spelling:
+        description: The English prose check also flags Canadian and British spellings and gives the US one.
+        type: boolean
+        default: false
 # No workflow-level permissions: each job states its own, and publish takes what the
 # caller grants. Asking for more than the caller grants fails the run at startup.
 jobs:
@@ -79,6 +83,7 @@ jobs:
       doc-ref: ${{ inputs.doc-ref }}
       doc-rules: ${{ inputs.doc-rules }}
       doc-references: ${{ inputs.doc-references }}
+      us-spelling: ${{ inputs.us-spelling }}
   publish:
     needs: strict-check
     runs-on: ubuntu-latest
