@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p>
  * With {@code --lang fr}, only the length checks run: the word lists behind the other checks are English.
  * <p>
- * Usage: {@code java ProseLint.java [--lang en|fr] [--max-words N] FILE...}.
+ * Usage: {@code java ProseLint.java [--lang en|fr] [--max-words N] [--us-spelling] FILE...}.
  * The exit code is 1 when a finding is reported and 2 on a usage error.
  */
 public class ProseLint {
@@ -91,16 +91,63 @@ public class ProseLint {
     record Paragraph(int line, String text) {
     }
 
+    /** Canadian and British spellings mapped to the US spelling that FPSOT English uses. */
+    static final java.util.Map<String, String> US_SPELLING = usSpelling();
+
+    private static java.util.Map<String, String> usSpelling() {
+        java.util.Map<String, String> m = new java.util.HashMap<>();
+        for (String stem : List.of("organis", "summaris", "recognis", "authoris", "normalis", "prioritis",
+                "standardis", "minimis", "maximis", "optimis", "categoris", "customis", "initialis",
+                "serialis", "localis", "internationalis", "emphasis", "finalis", "harmonis", "realis",
+                "specialis", "utilis", "visualis", "synchronis", "centralis", "criticis", "apologis",
+                "characteris", "memoris", "tokenis", "sanitis", "capitalis", "analys", "paralys")) {
+            String us = stem.substring(0, stem.length() - 1) + "z";
+            for (String end : List.of("e", "es", "ed", "ing", "ation", "ations", "er", "ers")) {
+                if (stem.equals("emphasis") && !end.startsWith("e") && !end.equals("ing")) {
+                    continue;
+                }
+                m.put(stem + end, us + end);
+            }
+        }
+        for (String w : List.of("colour", "behaviour", "favour", "honour", "labour", "neighbour", "flavour",
+                "humour", "rumour", "harbour", "endeavour", "vapour")) {
+            String us = w.replace("our", "or");
+            for (String end : List.of("", "s", "ed", "ing", "able", "ite", "ites", "al")) {
+                m.put(w + end, us + end);
+            }
+        }
+        String[][] pairs = {
+            {"licence", "license"}, {"licences", "licenses"}, {"centre", "center"}, {"centres", "centers"},
+            {"centred", "centered"}, {"metre", "meter"}, {"metres", "meters"}, {"litre", "liter"},
+            {"fibre", "fiber"}, {"catalogue", "catalog"}, {"catalogues", "catalogs"},
+            {"programme", "program"}, {"programmes", "programs"}, {"defence", "defense"},
+            {"offence", "offense"}, {"travelled", "traveled"}, {"travelling", "traveling"},
+            {"cancelled", "canceled"}, {"cancelling", "canceling"}, {"modelling", "modeling"},
+            {"modelled", "modeled"}, {"labelled", "labeled"}, {"labelling", "labeling"},
+            {"judgement", "judgment"}, {"acknowledgement", "acknowledgment"}, {"enrol", "enroll"},
+            {"fulfil", "fulfill"}, {"grey", "gray"}, {"artefact", "artifact"}, {"artefacts", "artifacts"},
+        };
+        for (String[] p : pairs) {
+            m.put(p[0], p[1]);
+        }
+        return java.util.Map.copyOf(m);
+    }
+
+    private static final Pattern WORD_TOKEN = Pattern.compile("\\b[A-Za-z]+\\b");
+
     record Finding(int line, String message) {
     }
 
     public static void main(String[] args) throws IOException {
         int maxWords = 20;
         String lang = "en";
+        boolean usSpelling = false;
         List<Path> files = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--max-words") && i + 1 < args.length) {
                 maxWords = Integer.parseInt(args[++i]);
+            } else if (args[i].equals("--us-spelling")) {
+                usSpelling = true;
             } else if (args[i].equals("--lang") && i + 1 < args.length) {
                 lang = args[++i];
                 if (!lang.equals("en") && !lang.equals("fr")) {
@@ -112,7 +159,7 @@ public class ProseLint {
             }
         }
         if (files.isEmpty()) {
-            System.err.println("usage: ProseLint.java [--lang en|fr] [--max-words N] FILE...");
+            System.err.println("usage: ProseLint.java [--lang en|fr] [--max-words N] [--us-spelling] FILE...");
             System.exit(2);
         }
         int total = 0;
@@ -122,7 +169,7 @@ public class ProseLint {
                 text = text.substring(1);
             }
             boolean asciidoc = file.toString().endsWith(".adoc");
-            List<Finding> findings = lint(text, maxWords, asciidoc, lang.equals("en"));
+            List<Finding> findings = lint(text, maxWords, asciidoc, lang.equals("en"), usSpelling);
             total += findings.size();
             System.out.println("== " + file + ": " + findings.size() + " finding(s)");
             for (Finding f : findings) {
@@ -133,10 +180,14 @@ public class ProseLint {
     }
 
     static List<Finding> lint(String text, int maxWords) {
-        return lint(text, maxWords, false, true);
+        return lint(text, maxWords, false, true, false);
     }
 
     static List<Finding> lint(String text, int maxWords, boolean asciidoc, boolean english) {
+        return lint(text, maxWords, asciidoc, english, false);
+    }
+
+    static List<Finding> lint(String text, int maxWords, boolean asciidoc, boolean english, boolean usSpelling) {
         List<Finding> findings = new ArrayList<>();
         for (Paragraph p : asciidoc ? asciidocParagraphs(text) : paragraphs(text)) {
             List<String> sentences = sentences(p.text());
@@ -164,6 +215,13 @@ public class ProseLint {
                 while (m.find()) {
                     if (!NOMINAL_OK.contains(m.group(1).toLowerCase(Locale.ROOT))) {
                         findings.add(new Finding(p.line(), "nominalization \"" + m.group() + "\" (use the verb)"));
+                    }
+                }
+                m = WORD_TOKEN.matcher(s);
+                while (usSpelling && m.find()) {
+                    String us = US_SPELLING.get(m.group().toLowerCase(Locale.ROOT));
+                    if (us != null) {
+                        findings.add(new Finding(p.line(), "US spelling: \"" + m.group() + "\" → \"" + us + "\""));
                     }
                 }
                 m = VAGUE.matcher(s);
@@ -237,10 +295,21 @@ public class ProseLint {
         List<String> para = new ArrayList<>();
         int start = 0;
         String openBlock = null;
+        boolean inReferences = false;
         int lineNo = 0;
         for (String raw : text.split("\n", -1)) {
             lineNo++;
             String line = raw.strip();
+            // A References section lists the exact titles of outside sources: they are
+            // not our prose, so the section is skipped up to the next level-1 heading.
+            if (openBlock == null && line.startsWith("== ")) {
+                String title = line.substring(3).strip();
+                inReferences = title.equals("References") || title.equals("Références");
+            }
+            if (inReferences) {
+                flush(out, para, start);
+                continue;
+            }
             if (ADOC_DELIMITERS.contains(line)) {
                 flush(out, para, start);
                 boolean verbatim = !line.equals("====") && !line.equals("****");

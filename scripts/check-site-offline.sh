@@ -15,41 +15,72 @@ from html.parser import HTMLParser
 site = sys.argv[1]
 external = re.compile(r'^\s*(https?:)?//', re.I)
 theme_js = re.compile(r'(^|/)assets/js/theme\.js$')
+css_url = re.compile(r'(@import\s+["\']|url\(\s*["\']?)\s*(https?:)?//', re.I)
+# The only inline script allowed: the theme toggle's, compared with spaces collapsed.
+THEME_SCRIPT = ' '.join("""
+    (function () {
+      try {
+        var s = localStorage.getItem("fpsot-color-scheme");
+        if (s === "light" || s === "dark") document.documentElement.dataset.theme = s;
+      } catch (e) {}
+    })();
+""".split())
 problems = []
 
 class Page(HTMLParser):
     def __init__(self, path):
         super().__init__()
-        self.path, self.in_script, self.script = path, False, ''
+        self.path, self.raw, self.buf = path, None, ''
     def report(self, msg):
         problems.append(f'{self.path}:{self.getpos()[0]}: {msg}')
-    def handle_starttag(self, tag, attrs):
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs, closed=True)
+    def handle_starttag(self, tag, attrs, closed=False):
         a = dict(attrs)
+        for key, value in attrs:
+            if key.startswith('on'):
+                self.report(f'<{tag} {key}> runs a script')
         for key in ('src', 'poster', 'data'):
             if a.get(key) and external.match(a[key]):
                 self.report(f'<{tag} {key}="{a[key]}"> loads from another host')
         if a.get('srcset') and any(external.match(p.strip()) for p in a['srcset'].split(',')):
             self.report(f'<{tag} srcset> loads from another host')
-        if tag == 'link' and a.get('href') and external.match(a['href']):
-            rel = (a.get('rel') or '').lower().split()
-            if not set(rel) <= {'canonical', 'alternate'}:
-                self.report(f'<link rel="{a.get("rel")}" href="{a["href"]}"> loads from another host')
+        for key in ('href', 'xlink:href'):
+            value = a.get(key)
+            if not value or not external.match(value):
+                continue
+            if tag == 'link':
+                rel = (a.get('rel') or '').lower().split()
+                if not set(rel) <= {'canonical', 'alternate'}:
+                    self.report(f'<link rel="{a.get("rel")}" href="{value}"> loads from another host')
+            elif tag not in ('a', 'area'):
+                self.report(f'<{tag} {key}="{value}"> loads from another host')
+        if tag == 'base':
+            self.report('<base> changes where every relative address points')
+        if tag == 'meta' and (a.get('http-equiv') or '').lower() == 'refresh':
+            self.report('<meta http-equiv="refresh"> sends the reader elsewhere')
+        if a.get('style') and css_url.search(a['style']):
+            self.report(f'<{tag} style> loads from another host')
         if tag == 'script':
             if a.get('src'):
                 if not theme_js.search(a['src']):
                     self.report(f'<script src="{a["src"]}"> is not the theme toggle')
-            else:
-                self.in_script, self.script = True, ''
+            elif not closed:
+                self.raw, self.buf = 'script', ''
+        elif tag == 'style' and not closed:
+            self.raw, self.buf = 'style', ''
     def handle_data(self, data):
-        if self.in_script:
-            self.script += data
+        if self.raw:
+            self.buf += data
     def handle_endtag(self, tag):
-        if tag == 'script' and self.in_script:
-            self.in_script = False
-            if self.script.strip() and 'fpsot-color-scheme' not in self.script:
-                self.report('inline <script> is not the theme toggle')
+        if tag != self.raw:
+            return
+        if tag == 'script' and self.buf.strip() and ' '.join(self.buf.split()) != THEME_SCRIPT:
+            self.report('inline <script> is not the theme toggle')
+        if tag == 'style' and css_url.search(self.buf):
+            self.report('<style> loads from another host')
+        self.raw = None
 
-css_url = re.compile(r'(@import\s+["\']|url\(\s*["\']?)\s*(https?:)?//', re.I)
 for root, _, files in os.walk(site):
     for name in files:
         path = os.path.join(root, name)

@@ -1,0 +1,7 @@
+= Spelling
+
+The licence names the organisation.
+
+The colour of the centre box can change.
+
+Use a license and a color.

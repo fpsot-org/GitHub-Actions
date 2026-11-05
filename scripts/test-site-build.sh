@@ -9,6 +9,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# Run from the work folder, so a relative path never writes into the repo.
+cd "$work"
 fail=0
 # TOOLS_BIN may hold the tools already built, for a run where Go is not installed.
 if [ ! -x "${TOOLS_BIN:-}/sitecollect" ]; then
@@ -28,13 +30,37 @@ git_t -C "$work/repos/fpsot-spec-untagged" init -q
 git_t -C "$work/repos/fpsot-spec-untagged" add -A
 git_t -C "$work/repos/fpsot-spec-untagged" commit -q -m fixture
 cp -r "$repo/testdata/site-min" "$work/site"
-# The fixture lists a real spec for the CI run; here it builds the local fixture spec.
+# The published releases, as a fake gh prints them: v0.2.0 has a tag but no release,
+# and v0.3.0-rc.1 is a pre-release, so the site must take v0.1.0.
+git_t -C "$work/repos/fpsot-spec-good" tag -a v0.2.0 -m v0.2.0
+git_t -C "$work/repos/fpsot-spec-good" tag -a v0.3.0-rc.1 -m v0.3.0-rc.1
+mkdir -p "$work/fakebin"
+cat > "$work/fakebin/gh" <<'GH'
+#!/usr/bin/env bash
+case "$*" in
+  *fpsot-spec-good/releases*) printf 'v0.1.0\nv0.3.0-rc.1\n' ;;
+  *) ;;
+esac
+GH
+chmod +x "$work/fakebin/gh"
+specs() { # specs.yml content -> output of "site-build.sh specs"
+  printf '%s' "$1" > "$work/site/data/specs.yml"
+  PATH="$work/fakebin:$PATH" bash "$here/site-build.sh" specs "$work/site"
+}
+out=$(specs $'# Specs.\n- repo: fpsot-spec-good\n')
+[ "$out" = '[{"repo":"fpsot-spec-good","tag":"v0.1.0"}]' ] || { echo "FAIL: specs printed $out"; fail=1; }
+out=$(specs $'- repo: "fpsot-spec-good"  # quoted, with a comment\n')
+[ "$out" = '[{"repo":"fpsot-spec-good","tag":"v0.1.0"}]' ] || { echo "FAIL: quoted entry: $out"; fail=1; }
+if out=$(specs $'- repo: fpsot-spec-good\n- name: fpsot-spec-other\n' 2>&1); then
+  echo "FAIL: specs accepted a line it cannot read"; fail=1
+fi
+grep -q 'name: fpsot-spec-other' <<<"$out" || { echo "FAIL: unreadable line not named: $out"; fail=1; }
+if out=$(specs $'# nothing\n' 2>&1); then echo "FAIL: specs accepted an empty list"; fail=1; fi
+if out=$(specs $'- repo: fpsot-spec-untagged\n' 2>&1); then echo "FAIL: specs accepted a spec without a release"; fail=1; fi
+grep -q 'fpsot-spec-untagged has no release' <<<"$out" || { echo "FAIL: no-release message missing: $out"; fail=1; }
 printf -- '- repo: fpsot-spec-good\n' > "$work/site/data/specs.yml"
 
-specs=$(bash "$here/site-build.sh" specs "$work/site")
-[ "$specs" = '["fpsot-spec-good"]' ] || { echo "FAIL: specs printed $specs"; fail=1; }
-
-if ! bash "$here/site-build.sh" map "$work/site" fpsot-spec-good "$work/part-good" >"$work/map.log" 2>&1; then
+if ! bash "$here/site-build.sh" map "$work/site" fpsot-spec-good v0.1.0 "$work/part-good" >"$work/map.log" 2>&1; then
   echo "FAIL: map:"; tail -30 "$work/map.log"; fail=1
 fi
 for f in good/index.html fr/good/index.html fr/good/compare/pages/ca/index.html; do
@@ -59,14 +85,14 @@ if bash "$here/site-build.sh" reduce "$work/out2" "$work/part-good" "$work/part-
 fi
 grep -q 'part-good' "$work/dup.log" && grep -q 'part-dup' "$work/dup.log" || { echo "FAIL: conflict message does not name both parts:"; cat "$work/dup.log"; fail=1; }
 
-if bash "$here/site-build.sh" map "$work/site" fpsot-spec-nope "$work/part-nope" >"$work/nope.log" 2>&1; then
+if bash "$here/site-build.sh" map "$work/site" fpsot-spec-nope v0.1.0 "$work/part-nope" >"$work/nope.log" 2>&1; then
   echo "FAIL: map accepted a spec that does not exist"; fail=1
 fi
 grep -q 'fpsot-spec-nope' "$work/nope.log" || { echo "FAIL: missing spec not named"; fail=1; }
-if bash "$here/site-build.sh" map "$work/site" fpsot-spec-untagged "$work/part-untagged" >"$work/untagged.log" 2>&1; then
-  echo "FAIL: map accepted a spec without a release tag"; fail=1
+if bash "$here/site-build.sh" map "$work/site" fpsot-spec-good v9.9.9 "$work/part-v9" >"$work/v9.log" 2>&1; then
+  echo "FAIL: map accepted a tag that does not exist"; fail=1
 fi
-grep -q 'no release tag' "$work/untagged.log" || { echo "FAIL: no-tag message missing:"; cat "$work/untagged.log"; fail=1; }
+grep -q 'v9.9.9' "$work/v9.log" || { echo "FAIL: missing tag not named:"; cat "$work/v9.log"; fail=1; }
 
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

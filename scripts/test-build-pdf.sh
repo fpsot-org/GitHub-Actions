@@ -36,7 +36,7 @@ check_pdf() { # lang-dir lang-tag title
   fi
   grep -aq "/Lang ($2)" "$work/$1.qdf.pdf" || { echo "FAIL: $1: /Lang ($2) not set"; grep -ao '/Lang ([^)]*)' "$work/$1.qdf.pdf" | head -1; fail=1; }
 }
-check_pdf en en-CA "FPSOT test specification"
+check_pdf en en-US "FPSOT test specification"
 # Asciidoctor turns the apostrophe into a typographic one (U+2019).
 check_pdf fr fr-CA "Spécification d’essai FPSOT"
 # The table of contents is filled in: its heading and a chapter title come before the chapter text.
@@ -44,8 +44,25 @@ if [ -f "$work/en.pdf" ]; then
   pdftotext "$work/en.pdf" - | awk '/This chapter holds one rule/{exit} /^Rules/{n++} END{exit !(n>=2)}' \
     || { echo "FAIL: en: table of contents is empty"; fail=1; }
 fi
+# A table row never breaks across two pages: each row's first and last words are on the same page.
+if [ -f "$work/en.pdf" ]; then
+  pages=$(pdfinfo "$work/en.pdf" | awk '/^Pages:/{print $2}')
+  for p in $(seq 1 "$pages"); do pdftotext -f "$p" -l "$p" "$work/en.pdf" - | grep -o 'row[0-9][0-9]\(start\|end\)' | sed "s/^/$p /"; done > "$work/rows.txt"
+  split=$(awk '{r=substr($2,4,2); if ($2 ~ /start/) s[r]=$1; else if (s[r] != $1) print "row" r}' "$work/rows.txt")
+  [ "$(grep -c start "$work/rows.txt")" = 60 ] || { echo "FAIL: en: expected 60 table rows, found $(grep -c start "$work/rows.txt")"; fail=1; }
+  [ -z "$split" ] || { echo "FAIL: en: table rows break across pages:" $split; fail=1; }
+fi
 if [ -f "$work/fr.pdf" ]; then
   pdftotext "$work/fr.pdf" - | grep -q 'Spécification, élément, ça, où, déjà' || { echo "FAIL: fr: accents lost in text"; fail=1; }
 fi
+# A text alternative per image: when the counts differ, odt-to-pdf.py fails rather
+# than give an image the alternative of another one.
+asciidoctor -b docbook5 -d book -o "$work/count.xml" "$here/testdata/book/en/book.adoc"
+pandoc -f docbook -t odt --resource-path="$here/testdata/book/en" -o "$work/count.odt" "$work/count.xml"
+echo '["one", "two"]' > "$work/count-alts.json"
+if python3 "$here/odt-to-pdf.py" "$work/count.odt" "$work/count.pdf" "$work/count-profile" "$work/count-alts.json" >"$work/count.log" 2>&1; then
+  echo "FAIL: odt-to-pdf.py accepted 2 text alternatives for 1 image"; fail=1
+fi
+grep -q '2 text alternatives for 1 image' "$work/count.log" || { echo "FAIL: count message missing:"; cat "$work/count.log"; fail=1; }
 [ $fail -eq 0 ] && echo "PASS"
 exit $fail

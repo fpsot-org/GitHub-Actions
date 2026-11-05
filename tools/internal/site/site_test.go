@@ -260,3 +260,19 @@ func TestCollectUnresolvedFails(t *testing.T) {
 		t.Fatalf("want unresolved error, got %v", err)
 	}
 }
+
+// Header attributes of the source, such as :toc: in a book, stay in the page header:
+// in the body they would not take effect.
+func TestCollectKeepsHeaderAttributes(t *testing.T) {
+	out := collect(t)
+	book := read(t, filepath.Join(out, "writing/book/index.adoc"))
+	head, _, _ := strings.Cut(book, "\ninclude::")
+	for _, want := range []string{"\n:doctype: book\n", "\n:toc:\n"} {
+		if !strings.Contains(head+"\n", want) {
+			t.Errorf("book page header lacks %q:\n%s", strings.TrimSpace(want), head)
+		}
+	}
+	if !strings.HasPrefix(book, "= Book en\n:page-layout: spec\n") {
+		t.Errorf("title and site header must come first:\n%s", head)
+	}
+}
