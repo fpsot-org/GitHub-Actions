@@ -124,3 +124,85 @@ func TestBook(t *testing.T) {
 	}
 	one(t, Book(filepath.Join(root, "bad.adoc")), "glossary.adoc")
 }
+
+const refHist = "\n== Document history\n\n|===\n|Version |Date |Change\n|===\n"
+
+func TestReferencesMissingEntry(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nA server follows link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "https://www.rfc-editor.org/info/rfc9110")
+}
+
+func TestReferencesOK(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nA server follows link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110, HTTP Semantics], 2022-06. link:https://web.archive.org/web/2026/https://www.rfc-editor.org/info/rfc9110[Archived copy]\n" + refHist})
+	if got := References([]string{filepath.Join(root, "spec/en/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestReferencesIgnores(t *testing.T) {
+	body := "= Page\n\nSee link:https://fpsot.org/doc/[the doc spec], link:https://github.com/fpsot-org/x[the repo] and link:https://web.archive.org/web/2026/https://x.org/[a copy].\nThe type is `https://www.iana.org/not-a-citation`.\n\n[source,http]\n----\nGET https://api.example.com/v1/parties\n----\n" + refHist
+	root := tree(t, map[string]string{"spec/en/page.adoc": body})
+	if got := References([]string{filepath.Join(root, "spec/en/page.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestReferencesNoArchive(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nSee link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110, HTTP Semantics], 2022-06.\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "archived copy")
+}
+
+func TestReferencesPlacement(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/http.adoc": "= HTTP\n\nSee link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/2026/x[Archived copy]\n\n== Notes\n\nMore.\n" + refHist})
+	one(t, References([]string{filepath.Join(root, "spec/en/http.adoc")}), "just before")
+}
+
+func TestReferencesFrench(t *testing.T) {
+	hist := "\n== Historique du document\n\n|===\n|Version |Date |Changement\n|===\n"
+	root := tree(t, map[string]string{"spec/fr/http.adoc": "= HTTP\n\nVoir link:https://www.rfc-editor.org/info/rfc9110[RFC 9110].\n\n== Références\n\n=== Références normatives\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/2026/x[Copie archivée]\n" + hist})
+	if got := References([]string{filepath.Join(root, "spec/fr/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestCodeLanguage(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/code.adoc": "= Code\n\n[source,json]\n----\n{}\n----\n\n[source]\n----\nx\n----\n\n----\ny\n----\n" + refHist})
+	got := CodeLanguage([]string{filepath.Join(root, "spec/en/code.adoc")})
+	if len(got) != 2 {
+		t.Fatalf("want 2 findings, got %+v", got)
+	}
+}
+
+func TestReferencesUnlinkedRFC(t *testing.T) {
+	body := "= HTTP\n\nA server follows {abbr-rfc} 9110 and RFC 9457.\nIt also follows link:https://www.rfc-editor.org/info/rfc7396[RFC 7396].\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc7396[RFC 7396], 2014-10. link:https://web.archive.org/web/2026/x[Archived copy]\n" + refHist
+	root := tree(t, map[string]string{"spec/en/http.adoc": body})
+	got := References([]string{filepath.Join(root, "spec/en/http.adoc")})
+	if len(got) != 2 || !strings.Contains(got[0].Msg, "9110") || !strings.Contains(got[1].Msg, "9457") {
+		t.Fatalf("want 2 unlinked RFC findings, got %+v", got)
+	}
+}
+
+func TestReferencesCommitPinnedGitHub(t *testing.T) {
+	pinned := "https://github.com/cloudevents/spec/blob/fc1f6f31f5f011a72183f1bcea20c987cb683ade/cloudevents/spec.md"
+	tag := "https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md"
+	body := "= Events\n\nSee link:" + pinned + "[CloudEvents] and link:" + tag + "[CloudEvents].\n\n== References\n\n=== Normative\n\n* link:" + pinned + "[CloudEvents 1.0.2], CNCF, 2022-02.\n* link:" + tag + "[CloudEvents 1.0.2], CNCF, 2022-02.\n" + refHist
+	root := tree(t, map[string]string{"spec/en/events.adoc": body})
+	// The commit-pinned link cannot change, so it is its own archived copy; a tag can move.
+	one(t, References([]string{filepath.Join(root, "spec/en/events.adoc")}), "archived copy")
+}
+
+func TestReferencesURLMatching(t *testing.T) {
+	body := "= HTTP\n\nSee https://www.rfc-editor.org/info/rfc9110. Also (https://semver.org/spec/v2.0.0.html) and link:https://www.rfc-editor.org/rfc/rfc9110#section-9[section 9].\nSee xref:other.adoc[RFC 7396] and <<x,RFC 9457>>.\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/x[Archived copy]\n* link:https://semver.org/spec/v2.0.0.html[SemVer]. link:https://web.archive.org/web/1/y[Archived copy]\n* link:https://www.rfc-editor.org/rfc/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/z[Archived copy]\n\n== Document history\n\n|===\n|Version |Date |Change\n|0.1.0 |2026-11-02 |Follows RFC 8174 and https://example.org/x.\n|0.1.1 |2026-11-03 |See https://www.w3.org/TR/old/.\n|===\n"
+	root := tree(t, map[string]string{"spec/en/http.adoc": body})
+	if got := References([]string{filepath.Join(root, "spec/en/http.adoc")}); len(got) != 0 {
+		t.Fatalf("want no findings (punctuation trimmed, fragment ignored, xref and history skipped), got %+v", got)
+	}
+}
+
+func TestCodeLanguageForms(t *testing.T) {
+	root := tree(t, map[string]string{"spec/en/code.adoc": "= Code\n\n[source%linenums,json]\n----\n{}\n----\n\n[,yaml]\n----\na: 1\n----\n\n[source,json]\n.Example\n----\n{}\n----\n\n[source%linenums]\n----\nx\n----\n" + refHist})
+	got := CodeLanguage([]string{filepath.Join(root, "spec/en/code.adoc")})
+	if len(got) != 1 || got[0].Line != 20 {
+		t.Fatalf("want 1 finding at line 20, got %+v", got)
+	}
+}

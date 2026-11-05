@@ -183,14 +183,17 @@ jobs:
         with:
           name: spec-html
           path: html
-      # iso.org, LégisQuébec and CanLII answer 403 to automated readers, and www.canada.ca
-      # resets the connection from GitHub runners. Comparison pages always pair these
-      # links with an archived copy, which is checked.
+      # iso.org, LégisQuébec, CanLII and merriam-webster.com answer 403 to automated
+      # readers, and www.canada.ca resets the connection from GitHub runners. Pages always
+      # pair these links with an archived copy, which is checked. The Wayback Machine
+      # throttles bursts: a 429 answer counts as reachable.
       - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: >-
-            --no-progress --max-retries 3 --root-dir "${{ github.workspace }}/html"
+            --no-progress --max-retries 3 --retry-wait-time 10 --max-concurrency 8 --root-dir "${{ github.workspace }}/html"
+            --accept '200..=299,429'
             --exclude '^https://(www\.)?iso\.org/'
+            --exclude '^https://(www\.)?merriam-webster\.com/'
             --exclude '^https://(www\.)?legisquebec\.gouv\.qc\.ca/'
             --exclude '^https://(www\.)?canlii\.org/'
             --exclude '^https://www\.canada\.ca/'
@@ -240,7 +243,8 @@ jobs:
           name=$(basename "$GITHUB_REPOSITORY")
           for l in en fr; do
             [ -f "spec/$l/book.adoc" ] || continue
-            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$l-CA"
+            tag=en-US; [ "$l" = fr ] && tag=fr-CA
+            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$tag"
             pdfinfo "$RUNNER_TEMP/book/$name-$l.pdf" | grep -q '^Tagged: *yes'
           done
       - if: steps.has.outputs.book == 'true'
@@ -321,6 +325,9 @@ jobs:
           for lang in en fr; do
             mapfile -t files < <(find "spec/$lang" "docs/modules/$lang" -name '*.adoc' ! -name '_*' 2>/dev/null | sort)
             [ "${#files[@]}" -eq 0 ] && continue
-            java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${files[@]}" || status=1
+            extra=()
+            # A spec repo opts in to US spelling with a line "us-spelling" in .fpsot-checks.
+            [ "$lang" = en ] && grep -qx 'us-spelling' .fpsot-checks 2>/dev/null && extra=(--us-spelling)
+            java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${extra[@]}" "${files[@]}" || status=1
           done
           exit $status

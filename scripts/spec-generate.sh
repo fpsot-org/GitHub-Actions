@@ -7,7 +7,7 @@
 #     attribute files and spec/<lang>/glossary.adoc, and checks first use;
 #   - jurisdictions/*.yaml exist: LinkML validation (when LINKML is set), then jurisgen
 #     writes docs/modules/<lang>/pages/jurisdictions/;
-#   - DOC_RULES=true: doccheck.
+#   - DOC_RULES=true: doccheck (with DOC_REFERENCES=true, also References and code languages).
 #
 # Environment:
 #   TOOLS_BIN  folder holding termgen, jurisgen and doccheck (required)
@@ -16,6 +16,8 @@
 #   LINKML     linkml-validate command; validation is skipped when empty
 #   STRICT     true: stale comparison rows fail (releases)
 #   DOC_RULES  true: run doccheck
+#   DOC_REFERENCES  true: doccheck also checks References sections and code block languages
+#              (a line "references" in the repo's .fpsot-checks does the same)
 set -uo pipefail
 : "${TOOLS_BIN:?TOOLS_BIN must point to the built tools}"
 status=0
@@ -58,6 +60,10 @@ if compgen -G "jurisdictions/*.yaml" >/dev/null; then
 fi
 
 if [ "${DOC_RULES:-false}" = true ]; then
-  "$TOOLS_BIN/doccheck" -root . || status=1
+  refs=()
+  if [ "${DOC_REFERENCES:-false}" = true ] || grep -qx 'references' .fpsot-checks 2>/dev/null; then
+    refs=(-references)
+  fi
+  "$TOOLS_BIN/doccheck" -root . "${refs[@]}" || status=1
 fi
 exit $status

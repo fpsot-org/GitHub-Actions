@@ -6,14 +6,14 @@
 # → PDF (LibreOffice, through odt-to-pdf.py, which fills in the table of contents).
 # Asciidoctor PDF is not used because it does not produce tagged PDF.
 #
-# Usage: build-pdf.sh BOOK.adoc OUT.pdf LANG     (LANG: en-CA or fr-CA)
+# Usage: build-pdf.sh BOOK.adoc OUT.pdf LANG     (LANG: en-US or fr-CA)
 # Extra Asciidoctor attributes can be passed in ASCIIDOCTOR_ATTRS, for example
 # ASCIIDOCTOR_ATTRS="-a revnumber=0.1.0".
 set -euo pipefail
 book=${1:?usage: build-pdf.sh BOOK.adoc OUT.pdf LANG}
 out=${2:?usage: build-pdf.sh BOOK.adoc OUT.pdf LANG}
 lang=${3:?usage: build-pdf.sh BOOK.adoc OUT.pdf LANG}
-case "$lang" in en-CA|fr-CA) ;; *) echo "LANG must be en-CA or fr-CA" >&2; exit 2 ;; esac
+case "$lang" in en-US|fr-CA) ;; *) echo "LANG must be en-US or fr-CA" >&2; exit 2 ;; esac
 src_dir=$(cd "$(dirname "$book")" && pwd)
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/build-pdf.XXXXXX")
 trap 'rm -rf "$work"' EXIT

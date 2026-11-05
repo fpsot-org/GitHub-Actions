@@ -1,0 +1,5 @@
+== testdata/spelling-us.adoc: 4 finding(s)
+  L3: US spelling: "licence" → "license"
+  L3: US spelling: "organisation" → "organization"
+  L5: US spelling: "colour" → "color"
+  L5: US spelling: "centre" → "center"

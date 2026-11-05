@@ -217,3 +217,173 @@ func Book(file string) []Finding {
 	}
 	return nil
 }
+
+var (
+	referencesHeading = map[string]string{"en": "References", "fr": "Références"}
+	urlPattern        = regexp.MustCompile(`https?://[^\s\[\]<>"]+`)
+	monospace         = regexp.MustCompile("`[^`]*`")
+	archiveHost       = "https://web.archive.org/"
+	linkMacro         = regexp.MustCompile(`(?:link:)?https?://[^\s\[\]]+\[[^\]]*\]`)
+	rfcMention        = regexp.MustCompile(`(?:\{abbr-rfc(?:-first)?\}|\bRFC) ?([0-9]{3,5})\b`)
+	// A GitHub file link pinned to a full commit hash cannot change: it is its own
+	// archived copy.
+	pinnedGitHub = regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/(?:blob|tree)/[0-9a-f]{40}/`)
+	sourceAttr   = regexp.MustCompile(`^\[(?:source)?[%#.\w-]*,\s*[\w+-]+`)
+	crossRef     = regexp.MustCompile(`xref:[^\s\[]*\[[^\]]*\]|<<[^>]*>>`)
+)
+
+// cleanURL drops what Asciidoctor leaves out of a bare URL (trailing punctuation)
+// and the fragment, so that a deep link matches its source's References entry.
+func cleanURL(u string) string {
+	u = strings.TrimRight(u, ".,;:!?)")
+	if i := strings.Index(u, "#"); i >= 0 {
+		u = u[:i]
+	}
+	return u
+}
+
+// outside reports whether url points outside the project: not fpsot.org, not the
+// fpsot-org GitHub organisation, not an archived copy and not an example domain.
+func outside(url string) bool {
+	rest := url[strings.Index(url, "://")+3:]
+	host := rest
+	if i := strings.IndexAny(rest, "/?#"); i >= 0 {
+		host = rest[:i]
+	}
+	host = strings.ToLower(host)
+	switch {
+	case host == "fpsot.org" || strings.HasSuffix(host, ".fpsot.org"):
+		return false
+	case host == "github.com" && strings.HasPrefix(strings.ToLower(rest), "github.com/fpsot-org/"):
+		return false
+	case strings.HasPrefix(url, archiveHost):
+		return false
+	}
+	for _, ex := range []string{"example.com", "example.org", "example.net"} {
+		if host == ex || strings.HasSuffix(host, "."+ex) {
+			return false
+		}
+	}
+	return true
+}
+
+// References reports, for each page, outside links missing from its References
+// section, a References section that is not just before the document history, and
+// References entries without an archived copy. Links in code blocks and in
+// monospace text are not citations.
+func References(files []string) []Finding {
+	var out []Finding
+	for _, file := range files {
+		lang := langOf(file)
+		if lang == "" || generatedOrBook(file) || !strings.HasSuffix(file, ".adoc") {
+			continue
+		}
+		type link struct {
+			url  string
+			line int
+		}
+		var body []link
+		listed := map[string]bool{}
+		var sections []string
+		refLine, inRefs, inHistory := 0, false, false
+		err := lines(file, func(n int, line string) {
+			if strings.HasPrefix(line, "== ") {
+				title := strings.TrimSpace(line[3:])
+				sections = append(sections, title)
+				inRefs = title == referencesHeading[lang]
+				inHistory = title == historyHeading[lang]
+				if inRefs {
+					refLine = n
+				}
+				return
+			}
+			// Past history rows record what changed then; they are not citations.
+			if inHistory {
+				return
+			}
+			var urls []string
+			for _, u := range urlPattern.FindAllString(monospace.ReplaceAllString(line, ""), -1) {
+				urls = append(urls, cleanURL(u))
+			}
+			if inRefs {
+				hasArchive, cites := false, false
+				for _, u := range urls {
+					if strings.HasPrefix(u, archiveHost) {
+						hasArchive = true
+					} else if outside(u) {
+						listed[u] = true
+						cites = true
+						if pinnedGitHub.MatchString(u) {
+							hasArchive = true
+						}
+					}
+				}
+				if cites && !hasArchive {
+					out = append(out, Finding{file, n, "references entry has no archived copy (a web.archive.org link, or a GitHub link pinned to a commit)"})
+				}
+				return
+			}
+			for _, u := range urls {
+				if outside(u) {
+					body = append(body, link{u, n})
+				}
+			}
+			// An RFC named outside a link's text is not linked to its source.
+			plain := crossRef.ReplaceAllString(linkMacro.ReplaceAllString(monospace.ReplaceAllString(line, ""), ""), "")
+			for _, m := range rfcMention.FindAllStringSubmatch(plain, -1) {
+				out = append(out, Finding{file, n, fmt.Sprintf("RFC %s is named without a link to it (https://www.rfc-editor.org/info/rfc%s)", m[1], m[1])})
+			}
+		})
+		if err != nil {
+			out = append(out, Finding{file, 0, err.Error()})
+			continue
+		}
+		if refLine != 0 {
+			if len(sections) < 2 || sections[len(sections)-2] != referencesHeading[lang] {
+				out = append(out, Finding{file, refLine, fmt.Sprintf("\"== %s\" must come just before \"== %s\"", referencesHeading[lang], historyHeading[lang])})
+			}
+		}
+		for _, l := range body {
+			if !listed[l.url] {
+				if refLine == 0 {
+					out = append(out, Finding{file, l.line, fmt.Sprintf("outside link %s needs a \"== %s\" section listing it", l.url, referencesHeading[lang])})
+				} else {
+					out = append(out, Finding{file, l.line, fmt.Sprintf("outside link %s is not listed under \"== %s\"", l.url, referencesHeading[lang])})
+				}
+			}
+		}
+	}
+	return out
+}
+
+// CodeLanguage reports listing blocks ("----") whose attribute line does not name
+// a language with [source,<lang>].
+func CodeLanguage(files []string) []Finding {
+	var out []Finding
+	for _, file := range files {
+		if langOf(file) == "" || !strings.HasSuffix(file, ".adoc") {
+			continue
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			out = append(out, Finding{file, 0, err.Error()})
+			continue
+		}
+		prev, open := "", false
+		for i, line := range strings.Split(strings.ReplaceAll(string(data), "\r", ""), "\n") {
+			if line == "----" {
+				if !open {
+					if !sourceAttr.MatchString(prev) {
+						out = append(out, Finding{file, i + 1, "code block must name its language, for example [source,json] or [source,text]"})
+					}
+				}
+				open = !open
+			}
+			trimmed := strings.TrimSpace(line)
+			if open || (trimmed != "" && !(strings.HasPrefix(trimmed, ".") && !strings.HasPrefix(trimmed, ".."))) {
+				prev = line
+			}
+		}
+	}
+	return out
+}
