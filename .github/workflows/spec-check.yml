@@ -327,7 +327,7 @@ jobs:
             [ "${#files[@]}" -eq 0 ] && continue
             extra=()
             # A spec repo opts in to US spelling with a line "us-spelling" in .fpsot-checks.
-            [ "$lang" = en ] && grep -qx 'us-spelling' .fpsot-checks 2>/dev/null && extra=(--us-spelling)
+            [ "$lang" = en ] && tr -d '\r' < .fpsot-checks 2>/dev/null | grep -qxE '[[:space:]]*us-spelling[[:space:]]*' && extra=(--us-spelling)
             java "$TOOLS/tools/prose-lint/ProseLint.java" --lang "$lang" "${extra[@]}" "${files[@]}" || status=1
           done
           exit $status

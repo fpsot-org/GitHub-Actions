@@ -1,0 +1,7 @@
+= Spelling in links
+
+See link:https://open.canada.ca/en/open-government-licence-canada[Open Government Licence – Canada] for the terms.
+
+The licence is open.
+
+The analyses are done.

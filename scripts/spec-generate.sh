@@ -61,7 +61,8 @@ fi
 
 if [ "${DOC_RULES:-false}" = true ]; then
   refs=()
-  if [ "${DOC_REFERENCES:-false}" = true ] || grep -qx 'references' .fpsot-checks 2>/dev/null; then
+  # One word per line; Windows line endings and spaces around the word are fine.
+  if [ "${DOC_REFERENCES:-false}" = true ] || tr -d '\r' < .fpsot-checks 2>/dev/null | grep -qxE '[[:space:]]*references[[:space:]]*'; then
     refs=(-references)
   fi
   "$TOOLS_BIN/doccheck" -root . "${refs[@]}" || status=1

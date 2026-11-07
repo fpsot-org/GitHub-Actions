@@ -1,0 +1,4 @@
+= Link first
+
+This sentence ends here and has a fair number of words in it so far.
+link:https://example.org/[PatternFly] states a target that has a fair number of words too.

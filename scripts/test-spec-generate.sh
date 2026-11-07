@@ -55,7 +55,7 @@ grep -q 'must end with "== Document history"' "$work/bad.log" || { echo "FAIL: b
 # A line "references" in .fpsot-checks turns on the References checks: spec-good
 # links to outside sources without a References section.
 cp -r "$repo/testdata/spec-good" "$work/refs"
-printf 'references\n' > "$work/refs/.fpsot-checks"
+printf 'us-spelling\r\nreferences \r\n' > "$work/refs/.fpsot-checks"
 if (cd "$work/refs" && bash "$here/spec-generate.sh") >"$work/refs.log" 2>&1; then
   echo "FAIL: spec-good with .fpsot-checks 'references' should fail"; fail=1
 fi
