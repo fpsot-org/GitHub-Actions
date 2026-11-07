@@ -106,6 +106,9 @@ public class ProseLint {
                 if (stem.equals("emphasis") && !end.startsWith("e") && !end.equals("ing")) {
                     continue;
                 }
+                if ((stem.equals("analys") || stem.equals("paralys")) && end.equals("es")) {
+                    continue; // "analyses" is also the US plural of "analysis"
+                }
                 m.put(stem + end, us + end);
             }
         }
@@ -195,7 +198,9 @@ public class ProseLint {
                 findings.add(new Finding(p.line(),
                         "paragraph has " + sentences.size() + " sentences (max " + MAX_SENTENCES + ")"));
             }
-            for (String s : sentences) {
+            for (String marked : sentences) {
+                String s = marked.replace(String.valueOf(LINK_START), "").replace(String.valueOf(LINK_END), "");
+                String own = LINK_SPAN.matcher(marked).replaceAll("LINK");
                 int words = count(WORD, s);
                 if (words > maxWords) {
                     findings.add(new Finding(p.line(), words + " words: \"" + head(s) + "…\""));
@@ -217,7 +222,7 @@ public class ProseLint {
                         findings.add(new Finding(p.line(), "nominalization \"" + m.group() + "\" (use the verb)"));
                     }
                 }
-                m = WORD_TOKEN.matcher(s);
+                m = WORD_TOKEN.matcher(own);
                 while (usSpelling && m.find()) {
                     String us = US_SPELLING.get(m.group().toLowerCase(Locale.ROOT));
                     if (us != null) {
@@ -232,7 +237,7 @@ public class ProseLint {
                 if (paren >= 0) {
                     findings.add(new Finding(p.line(), "parenthesis: \"" + head(s.substring(paren), 50) + "…\""));
                 }
-                String body = s.endsWith(";") ? s.substring(0, s.length() - 1) : s;
+                String body = own.endsWith(";") ? own.substring(0, own.length() - 1) : own;
                 if (body.contains("—") || body.contains("–") || body.contains(";")) {
                     findings.add(new Finding(p.line(), "dash or semicolon joins clauses"));
                 }
@@ -342,9 +347,15 @@ public class ProseLint {
         return out;
     }
 
+    // Link text is the title of an outside source: marked so that the spelling and
+    // dash checks skip it, since a source's title keeps its own spelling.
+    static final char LINK_START = '\uE000';
+    static final char LINK_END = '\uE001';
+    private static final Pattern LINK_SPAN = Pattern.compile("\uE000[^\uE001]*\uE001");
+
     private static String asciidocInline(String line) {
-        line = ADOC_MACRO.matcher(line).replaceAll("$1");
-        line = ADOC_URL_TEXT.matcher(line).replaceAll("$1");
+        line = ADOC_MACRO.matcher(line).replaceAll(LINK_START + "$1" + LINK_END);
+        line = ADOC_URL_TEXT.matcher(line).replaceAll(LINK_START + "$1" + LINK_END);
         line = ADOC_XREF.matcher(line).replaceAll("$1");
         return ADOC_BARE_XREF.matcher(line).replaceAll("$1");
     }
