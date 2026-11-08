@@ -1,0 +1,18 @@
+= Règles
+include::_fpsot-terms.adoc[]
+
+[[TST-001]]
+Chaque appel d’{abbr-api-first} DOIT répondre.
+
+[#TST-002]
+Une règle DOIT renvoyer à <<TST-001>> ou à xref:#TST-001[la première règle].
+
+== Exemples
+
+Les ancres et les liens d'un bloc de code restent tels quels.
+
+[source,asciidoc]
+----
+[[TST-001]]
+Voir <<TST-002>> et xref:glossary.adoc#gl-api[API].
+----

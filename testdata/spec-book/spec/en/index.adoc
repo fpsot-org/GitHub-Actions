@@ -1,0 +1,9 @@
+= Book test specification
+include::_fpsot-terms.adoc[]
+
+This specification tests the combined book.
+The {abbr-api-first} of the {term-registry} returns pages.
+The xref:rules.adoc[rules] start with xref:rules.adoc#TST-001[the first rule].
+The xref:../../docs/modules/en/pages/how-to/index.adoc[how-to guide] shows the steps.
+
+image::../../diagrams/box.svg[Test diagram: one box]

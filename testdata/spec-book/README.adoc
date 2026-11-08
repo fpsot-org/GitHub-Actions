@@ -1,0 +1,5 @@
+= Book test spec
+
+A second spec for the combined book test (scripts/test-site-book.sh). Its IDs, page
+names and glossary anchors are the same as those of spec-good, so the book must keep
+them apart. A listing block shows anchors and links that must stay as they are.

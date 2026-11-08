@@ -276,3 +276,50 @@ func TestCollectKeepsHeaderAttributes(t *testing.T) {
 		t.Errorf("title and site header must come first:\n%s", head)
 	}
 }
+
+// With the release PDFs, each page links its own language's PDF and the other one,
+// with their sizes in bytes, and the PDFs go next to the pages, one per language.
+func TestCollectPDFs(t *testing.T) {
+	pdfs := t.TempDir()
+	en := filepath.Join(pdfs, "fpsot-spec-writing-en.pdf")
+	fr := filepath.Join(pdfs, "fpsot-spec-writing-fr.pdf")
+	os.WriteFile(en, []byte(strings.Repeat("e", 1234)), 0o644)
+	os.WriteFile(fr, []byte(strings.Repeat("f", 2345)), 0o644)
+	out := t.TempDir()
+	pub := filepath.Join(out, "pub")
+	err := Collect(Options{Spec: "writing", Root: "/writing", SrcDir: fixture, OutDir: out, PublicDir: pub, Version: "0.1.1",
+		DefaultDate: "2026-11-03", RepoURL: "https://github.com/fpsot-org/fpsot-spec-writing", SiteURL: "https://fpsot.org",
+		PDFs: map[string]string{"en": en, "fr": fr}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"writing/fpsot-spec-writing-en.pdf", "fr/writing/fpsot-spec-writing-fr.pdf"} {
+		if _, err := os.Stat(filepath.Join(pub, f)); err != nil {
+			t.Errorf("%s not copied", f)
+		}
+	}
+	for page, want := range map[string][]string{
+		"fr/writing/keywords/index.adoc": {":page-pdf: /fr/writing/fpsot-spec-writing-fr.pdf\n", ":page-pdf-bytes: 2345\n",
+			":page-pdf-other: /writing/fpsot-spec-writing-en.pdf\n", ":page-pdf-other-bytes: 1234\n"},
+		"writing/guides/guide/index.adoc": {":page-pdf: /writing/fpsot-spec-writing-en.pdf\n", ":page-pdf-bytes: 1234\n",
+			":page-pdf-other: /fr/writing/fpsot-spec-writing-fr.pdf\n", ":page-pdf-other-bytes: 2345\n"},
+	} {
+		got := read(t, filepath.Join(out, page))
+		head, _, _ := strings.Cut(got, "\ninclude::")
+		for _, w := range want {
+			if !strings.Contains(head+"\n", w) {
+				t.Errorf("%s lacks %q:\n%s", page, strings.TrimSpace(w), head)
+			}
+		}
+	}
+	// Without PDFs, no page names one.
+	if strings.Contains(read(t, filepath.Join(collect(t), "writing/index.adoc")), ":page-pdf") {
+		t.Error("page-pdf written without PDFs")
+	}
+	// A PDF that does not exist fails, naming it.
+	err = Collect(Options{Spec: "writing", Root: "/writing", SrcDir: fixture, OutDir: t.TempDir(), Version: "0.1.1",
+		DefaultDate: "2026-11-03", RepoURL: "u", SiteURL: "s", PDFs: map[string]string{"en": en, "fr": filepath.Join(pdfs, "nope.pdf")}})
+	if err == nil || !strings.Contains(err.Error(), "nope.pdf") {
+		t.Fatalf("want an error naming the missing PDF, got %v", err)
+	}
+}

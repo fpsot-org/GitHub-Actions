@@ -1,0 +1,9 @@
+= Spécification d'essai du livre
+:doctype: book
+:toc:
+
+include::index.adoc[leveloffset=+1]
+
+include::regles.adoc[leveloffset=+1]
+
+include::glossary.adoc[leveloffset=+1]

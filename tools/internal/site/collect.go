@@ -26,8 +26,17 @@ type Options struct {
 	DefaultDate string            // date for files missing from Dates
 	RepoURL     string            // https URL of the spec repository
 	SiteURL     string            // https URL of the site
+	PDFs        map[string]string // the spec's PDF file in each language ("en", "fr"), if any
+
+	pdfLinks map[string]pdfLink // set by Collect: each PDF's URL and size
 
 	route func(spec, root, src string) (Page, bool, error) // test hook
+}
+
+// pdfLink is where a spec PDF is on the site, and its size.
+type pdfLink struct {
+	URL   string
+	Bytes int64
 }
 
 // headerAttr matches an attribute entry, such as ":toc:" or ":sectnums!:".
@@ -75,6 +84,23 @@ func Collect(opt Options) error {
 	}
 	if opt.PublicDir == "" {
 		opt.PublicDir = filepath.Join(opt.OutDir, "public")
+	}
+	// The PDF of each language goes next to that language's pages.
+	opt.pdfLinks = map[string]pdfLink{}
+	for _, lang := range []string{"en", "fr"} {
+		file, ok := opt.PDFs[lang]
+		if !ok {
+			continue
+		}
+		info, err := os.Stat(file)
+		if err != nil {
+			return fmt.Errorf("PDF (%s): %w", lang, err)
+		}
+		url := langPrefix(lang) + strings.TrimSuffix(opt.Root, "/") + "/" + filepath.Base(file)
+		if err := copyFile(file, filepath.Join(opt.PublicDir, filepath.FromSlash(strings.TrimPrefix(url, "/")))); err != nil {
+			return err
+		}
+		opt.pdfLinks[lang] = pdfLink{URL: url, Bytes: info.Size()}
 	}
 	var files []string
 	for _, top := range []string{"spec", "docs", "diagrams"} {
@@ -204,6 +230,14 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, s
 	line("page-updated", date)
 	if alt, ok := pages[otherLang(p)]; ok {
 		line("page-alternate", alt.URL)
+	}
+	if pdf, ok := opt.pdfLinks[p.Lang]; ok {
+		line("page-pdf", pdf.URL)
+		line("page-pdf-bytes", fmt.Sprint(pdf.Bytes))
+	}
+	if pdf, ok := opt.pdfLinks[otherLangCode(p.Lang)]; ok {
+		line("page-pdf-other", pdf.URL)
+		line("page-pdf-other-bytes", fmt.Sprint(pdf.Bytes))
 	}
 	line("revnumber", opt.Version)
 	line("contributing-url", strings.TrimSuffix(opt.RepoURL, "/")+"/blob/main/CONTRIBUTING.md")
