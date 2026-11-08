@@ -73,6 +73,12 @@ case "$cmd" in
     tag=${3:?usage: site-build.sh map SITE_DIR REPO TAG OUT_DIR}
     out=${4:?usage: site-build.sh map SITE_DIR REPO TAG OUT_DIR}
     spec=${repo#fpsot-spec-}
+    # The cleanup below deletes folders named after the spec, so an empty or reserved
+    # name would delete home content. Refuse it before touching anything.
+    if ! [[ $repo =~ ^fpsot-spec-[a-z0-9]+(-[a-z0-9]+)*$ ]] || [ "$spec" = fr ]; then
+      echo "error: '$repo' is not a valid spec repo name (fpsot-spec-<name>, lower-case, not 'fr')" >&2
+      exit 1
+    fi
     work=$(mktemp -d)
     trap 'rm -rf "$work"; rm -rf "$site/content/_src/$spec" "$site/content/$spec" "$site/content/fr/$spec" "$site/public/$spec"' EXIT
     src=${SPEC_SOURCE_DIR:-https://github.com/fpsot-org}/$repo
@@ -111,7 +117,7 @@ case "$cmd" in
     trap 'rm -f "$list"' EXIT
     for part in "$@"; do
       (cd "$part" && find . -type f | sed "s|^\./||; s|\$|\t$part|")
-    done | sort > "$list"
+    done | LC_ALL=C sort > "$list"
     conflicts=$(cut -f1 "$list" | uniq -d)
     if [ -n "$conflicts" ]; then
       while read -r f; do
