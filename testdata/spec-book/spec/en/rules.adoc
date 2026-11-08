@@ -1,0 +1,18 @@
+= Rules
+include::_fpsot-terms.adoc[]
+
+[[TST-001]]
+Each {abbr-api-first} call MUST answer.
+
+[#TST-002]
+A rule MUST point back to <<TST-001>> or to xref:#TST-001[the first rule].
+
+== Examples
+
+The anchors and links in a listing block stay as they are.
+
+[source,asciidoc]
+----
+[[TST-001]]
+See <<TST-002>> and xref:glossary.adoc#gl-api[API].
+----

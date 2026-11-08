@@ -1,0 +1,9 @@
+= Spécification d'essai du livre
+include::_fpsot-terms.adoc[]
+
+Cette spécification met à l'essai le livre réuni.
+L'{abbr-api-first} du {term-registry} renvoie des pages.
+Les xref:regles.adoc[règles] commencent par xref:regles.adoc#TST-001[la première règle].
+Le xref:../../docs/modules/fr/pages/how-to/index.adoc[guide pratique] montre les étapes.
+
+image::../../diagrams/box.svg[Diagramme d’essai : une boîte]

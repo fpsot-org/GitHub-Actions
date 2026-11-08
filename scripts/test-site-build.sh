@@ -3,7 +3,7 @@
 # the home pages on their own (home), and the parts are merged (reduce). A spec
 # that does not exist, a spec without a release tag, a release without its PDFs and
 # two parts that hold the same file all fail and say why. map publishes the
-# release PDFs of the spec, one in each language's folder.
+# release PDFs of the spec, and home the combined book, one in each language's folder.
 # Needs Go, git, Maven and JDK 25: run it in the website builder image.
 set -u
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -111,6 +111,24 @@ if ! bash "$here/site-build.sh" home "$work/site" "$work/part-home" >"$work/home
 fi
 [ -f "$work/part-home/index.html" ] && [ -f "$work/part-home/fr/index.html" ] || { echo "FAIL: home pages missing"; fail=1; }
 [ ! -e "$work/part-home/good" ] || { echo "FAIL: home holds a spec"; fail=1; }
+grep -q 'Book: none' "$work/part-home/index.html" 2>/dev/null || { echo "FAIL: home without the book names a size"; fail=1; }
+# With the combined book: its PDFs are published, one in each language's folder, and
+# the home pages read their sizes (fpsot.book.en-bytes and fpsot.book.fr-bytes).
+mkdir -p "$work/book"
+printf '%%PDF-1.7 all en' > "$work/book/fpsot-specifications-en.pdf"
+printf '%%PDF-1.7 all fr!' > "$work/book/fpsot-specifications-fr.pdf"
+if ! bash "$here/site-build.sh" home "$work/site" "$work/part-home-book" "$work/book" >"$work/home-book.log" 2>&1; then
+  echo "FAIL: home with the book:"; tail -30 "$work/home-book.log"; fail=1
+fi
+cmp -s "$work/book/fpsot-specifications-en.pdf" "$work/part-home-book/fpsot-specifications-en.pdf" || { echo "FAIL: home did not publish the English book"; fail=1; }
+cmp -s "$work/book/fpsot-specifications-fr.pdf" "$work/part-home-book/fr/fpsot-specifications-fr.pdf" || { echo "FAIL: home did not publish the French book in /fr/"; fail=1; }
+grep -q 'Book: 15 16' "$work/part-home-book/index.html" 2>/dev/null || { echo "FAIL: home page lacks the book sizes:"; grep -o 'Book:[^<]*' "$work/part-home-book/index.html"; fail=1; }
+[ ! -e "$work/site/public/fpsot-specifications-en.pdf" ] && [ ! -e "$work/site/public/fr/fpsot-specifications-fr.pdf" ] || { echo "FAIL: home left the book in the site folder"; fail=1; }
+rm "$work/book/fpsot-specifications-fr.pdf"
+if bash "$here/site-build.sh" home "$work/site" "$work/part-home-nobook" "$work/book" >"$work/home-nobook.log" 2>&1; then
+  echo "FAIL: home accepted a book folder without the French book"; fail=1
+fi
+grep -q 'fpsot-specifications-fr.pdf' "$work/home-nobook.log" || { echo "FAIL: missing book not named:"; tail -5 "$work/home-nobook.log"; fail=1; }
 
 if ! bash "$here/site-build.sh" reduce "$work/out" "$work/part-home" "$work/part-good" >"$work/reduce.log" 2>&1; then
   echo "FAIL: reduce:"; cat "$work/reduce.log"; fail=1
