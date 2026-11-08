@@ -77,12 +77,17 @@ func Route(spec, root, src string) (Page, bool, error) {
 	return Page{Src: src, Lang: lang, URL: langPrefix(lang) + strings.TrimSuffix(root, "/") + "/" + rest}, true, nil
 }
 
+// otherLangCode returns "fr" for "en", and "en" for "fr".
+func otherLangCode(lang string) string {
+	if lang == "fr" {
+		return "en"
+	}
+	return "fr"
+}
+
 // otherLang returns the source path of the same page in the other language.
 func otherLang(p Page) string {
-	other := "fr"
-	if p.Lang == "fr" {
-		other = "en"
-	}
+	other := otherLangCode(p.Lang)
 	parts := strings.Split(p.Src, "/")
 	if parts[0] == "spec" {
 		parts[1] = other

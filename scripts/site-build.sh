@@ -8,12 +8,14 @@
 # Usage:
 #   site-build.sh specs  SITE_DIR                 print each spec repo with its release tag,
 #                                                 as a JSON array of {"repo","tag"}
-#   site-build.sh map    SITE_DIR REPO TAG OUT_DIR  build one spec at that tag
+#   site-build.sh map    SITE_DIR REPO TAG OUT_DIR  build one spec at that tag, with the
+#                                                 release PDFs of that tag
 #   site-build.sh home   SITE_DIR OUT_DIR         build the pages that are not specs
 #   site-build.sh reduce OUT_DIR PART_DIR...      merge the parts; a file in two parts fails
 # Environment:
 #   TOOLS_BIN              folder holding the built tools (map)
-#   GH_TOKEN               token for the gh CLI, which lists the releases (specs)
+#   GH_TOKEN               token for the gh CLI, which lists the releases (specs) and
+#                          downloads their PDFs (map)
 #   FPSOT_SITE_MAVEN_ARGS  Maven options, set by the website builder image
 #   SPEC_SOURCE_DIR        folder holding the spec repos, instead of GitHub (tests)
 #   MVN                    Maven command (default: mvn)
@@ -80,7 +82,7 @@ case "$cmd" in
       exit 1
     fi
     work=$(mktemp -d)
-    trap 'rm -rf "$work"; rm -rf "$site/content/_src/$spec" "$site/content/$spec" "$site/content/fr/$spec" "$site/public/$spec"' EXIT
+    trap 'rm -rf "$work"; rm -rf "$site/content/_src/$spec" "$site/content/$spec" "$site/content/fr/$spec" "$site/public/$spec" "$site/public/fr/$spec"' EXIT
     src=${SPEC_SOURCE_DIR:-https://github.com/fpsot-org}/$repo
     if ! git clone -q --filter=blob:none --no-checkout "$src" "$work/$repo" 2>"$work/clone.log"; then
       cat "$work/clone.log" >&2
@@ -92,9 +94,19 @@ case "$cmd" in
       exit 1
     fi
     git -C "$work/$repo" checkout -q "$tag"
-    # The origin must be the GitHub repo, for the links to it on each page.
-    git -C "$work/$repo" remote set-url origin "https://github.com/fpsot-org/$repo"
-    bash "$here/site-bundle.sh" "$work/$repo" "$site/content" "$site/public" \
+    # The PDFs of this release, served from the site next to each language's pages.
+    mkdir -p "$work/pdf"
+    names=() patterns=()
+    for l in en fr; do
+      if [ -d "$work/$repo/spec/$l" ]; then names+=("$repo-$l.pdf"); patterns+=(--pattern "$repo-$l.pdf"); fi
+    done
+    if [ ${#names[@]} -gt 0 ] && ! gh release download "$tag" --repo "fpsot-org/$repo" "${patterns[@]}" --dir "$work/pdf" 2>"$work/pdf.log"; then
+      cat "$work/pdf.log" >&2
+    fi
+    for f in "${names[@]}"; do
+      [ -s "$work/pdf/$f" ] || { echo "error: $repo $tag: the release has no $f" >&2; exit 1; }
+    done
+    PDF_DIR="$work/pdf" bash "$here/site-bundle.sh" "$work/$repo" "$site/content" "$site/public" \
       || { echo "error: $repo: collecting the pages failed" >&2; exit 1; }
     roq_build "$site" || { echo "error: $repo: the Roq build failed" >&2; exit 1; }
     mkdir -p "$out/fr"

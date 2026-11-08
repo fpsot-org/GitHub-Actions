@@ -12,6 +12,9 @@
 #   TERMBASE   term base file (default: the repo's own, else fpsot-spec-writing's
 #              highest v0 release)
 #   SITE_URL   (default https://fpsot.org)
+#   PDF_DIR    folder holding the release PDFs, <repo>-en.pdf and <repo>-fr.pdf: each
+#              is published next to its language's pages and linked from each page.
+#              One missing for a language the spec has fails.
 set -euo pipefail
 repo_dir=$(cd "${1:?usage: site-bundle.sh REPO_DIR CONTENT_DIR [PUBLIC_DIR]}" && pwd)
 content=${2:?usage: site-bundle.sh REPO_DIR CONTENT_DIR [PUBLIC_DIR]}
@@ -56,6 +59,16 @@ git -C "$repo_dir" ls-files -- 'spec/*.adoc' 'docs/*.adoc' | while read -r f; do
 done > "$work/dates.tsv"
 tag_date=$(git -C "$repo_dir" log -1 --format=%cs "$tag")
 
+pdfs=()
+if [ -n "${PDF_DIR:-}" ]; then
+  for l in en fr; do
+    [ -d "$repo_dir/spec/$l" ] || continue
+    pdf="$PDF_DIR/$name-$l.pdf"
+    [ -s "$pdf" ] || { echo "error: $name $tag: no PDF $name-$l.pdf in $PDF_DIR" >&2; exit 1; }
+    pdfs+=(-pdf-"$l" "$(cd "$PDF_DIR" && pwd)/$name-$l.pdf")
+  done
+fi
+
 "$TOOLS_BIN/sitecollect" -spec "$spec" -src "$repo_dir" -out "$content" -public "$public" \
   -version "$version" -dates "$work/dates.tsv" -default-date "$tag_date" \
-  -repo-url "$repo_url" -site-url "${SITE_URL:-https://fpsot.org}" || { echo "error: $name: sitecollect failed" >&2; exit 1; }
+  -repo-url "$repo_url" -site-url "${SITE_URL:-https://fpsot.org}" "${pdfs[@]}" || { echo "error: $name: sitecollect failed" >&2; exit 1; }

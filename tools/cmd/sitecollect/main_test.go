@@ -35,6 +35,18 @@ func TestCLI(t *testing.T) {
 		t.Fatalf("exit %d, stderr %q", code, stderr.String())
 	}
 
+	pdf := filepath.Join(t.TempDir(), "fpsot-spec-writing-en.pdf")
+	os.WriteFile(pdf, []byte("%PDF-1.7"), 0o644)
+	out = t.TempDir()
+	args = []string{"-spec", "writing", "-src", "../../internal/site/testdata/spec", "-out", out, "-version", "0.1.1",
+		"-default-date", "2026-11-03", "-repo-url", "https://github.com/fpsot-org/fpsot-spec-writing", "-pdf-en", pdf}
+	if code := run(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("-pdf-en: exit %d: %s", code, stderr.String())
+	}
+	if b, _ := os.ReadFile(filepath.Join(out, "writing/index.adoc")); !strings.Contains(string(b), ":page-pdf-bytes: 8\n") {
+		t.Fatalf("-pdf-en not used:\n%s", b)
+	}
+
 	stderr.Reset()
 	if code := run([]string{"-spec", "x"}, &stdout, &stderr); code != 2 {
 		t.Fatalf("missing flags: exit %d", code)

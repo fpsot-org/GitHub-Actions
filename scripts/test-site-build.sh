@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests site-build.sh on the site-min fixture: one spec is built on its own (map),
 # the home pages on their own (home), and the parts are merged (reduce). A spec
-# that does not exist, a spec without a release tag and two parts that hold the
-# same file all fail and say why.
+# that does not exist, a spec without a release tag, a release without its PDFs and
+# two parts that hold the same file all fail and say why. map publishes the
+# release PDFs of the spec, one in each language's folder.
 # Needs Go, git, Maven and JDK 25: run it in the website builder image.
 set -u
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -35,12 +36,38 @@ cp -r "$repo/testdata/site-min" "$work/site"
 git_t -C "$work/repos/fpsot-spec-good" tag -a v0.2.0 -m v0.2.0
 git_t -C "$work/repos/fpsot-spec-good" tag -a v0.3.0-rc.1 -m v0.3.0-rc.1
 mkdir -p "$work/fakebin"
-cat > "$work/fakebin/gh" <<'GH'
+# The release assets, as "gh release download TAG --repo fpsot-org/REPO --pattern F
+# ... --dir D" finds them: $work/assets/REPO/TAG/F.
+mkdir -p "$work/assets/fpsot-spec-good/v0.1.0" "$work/assets/fpsot-spec-nopdf/v0.1.0"
+printf '%%PDF-1.7 good en' > "$work/assets/fpsot-spec-good/v0.1.0/fpsot-spec-good-en.pdf"
+printf '%%PDF-1.7 good fr' > "$work/assets/fpsot-spec-good/v0.1.0/fpsot-spec-good-fr.pdf"
+printf '%%PDF-1.7 nopdf en' > "$work/assets/fpsot-spec-nopdf/v0.1.0/fpsot-spec-nopdf-en.pdf"
+cat > "$work/fakebin/gh" <<GH
 #!/usr/bin/env bash
+assets="$work/assets"
+GH
+cat >> "$work/fakebin/gh" <<'GH'
 case "$*" in
-  *fpsot-spec-good/releases*) printf 'v0.1.0\nv0.3.0-rc.1\n' ;;
-  *) ;;
+  *fpsot-spec-good/releases*) printf 'v0.1.0\nv0.3.0-rc.1\n'; exit 0 ;;
 esac
+if [ "$1 $2" = "release download" ]; then
+  tag=$3; shift 3; repo="" dir=. pats=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) repo=${2#fpsot-org/}; shift 2 ;;
+      --pattern) pats+=("$2"); shift 2 ;;
+      --dir) dir=$2; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  [ -d "$assets/$repo/$tag" ] || { echo "release not found" >&2; exit 1; }
+  mkdir -p "$dir"
+  n=0
+  for p in "${pats[@]}"; do
+    if [ -f "$assets/$repo/$tag/$p" ]; then cp "$assets/$repo/$tag/$p" "$dir/"; n=$((n + 1)); fi
+  done
+  [ $n -gt 0 ] || { echo "no assets match the file pattern" >&2; exit 1; }
+fi
 GH
 chmod +x "$work/fakebin/gh"
 specs() { # specs.yml content -> output of "site-build.sh specs"
@@ -60,6 +87,7 @@ if out=$(specs $'- repo: fpsot-spec-untagged\n' 2>&1); then echo "FAIL: specs ac
 grep -q 'fpsot-spec-untagged has no release' <<<"$out" || { echo "FAIL: no-release message missing: $out"; fail=1; }
 printf -- '- repo: fpsot-spec-good\n' > "$work/site/data/specs.yml"
 
+export PATH="$work/fakebin:$PATH"
 if ! bash "$here/site-build.sh" map "$work/site" fpsot-spec-good v0.1.0 "$work/part-good" >"$work/map.log" 2>&1; then
   echo "FAIL: map:"; tail -30 "$work/map.log"; fail=1
 fi
@@ -68,6 +96,15 @@ for f in good/index.html fr/good/index.html fr/good/compare/pages/ca/index.html;
 done
 [ ! -e "$work/part-good/index.html" ] || { echo "FAIL: map wrote the home page"; fail=1; }
 grep -q '<html lang="fr"' "$work/part-good/fr/good/index.html" 2>/dev/null || { echo "FAIL: French spec page is not lang fr"; fail=1; }
+cmp -s "$work/assets/fpsot-spec-good/v0.1.0/fpsot-spec-good-en.pdf" "$work/part-good/good/fpsot-spec-good-en.pdf" || { echo "FAIL: map did not publish the English PDF in /good/"; fail=1; }
+cmp -s "$work/assets/fpsot-spec-good/v0.1.0/fpsot-spec-good-fr.pdf" "$work/part-good/fr/good/fpsot-spec-good-fr.pdf" || { echo "FAIL: map did not publish the French PDF in /fr/good/"; fail=1; }
+[ ! -e "$work/site/public/fr/good" ] && [ ! -e "$work/site/public/good" ] || { echo "FAIL: map left the PDFs in the site folder"; fail=1; }
+# A release without its French PDF fails, and says which file is missing.
+cp -r "$work/repos/fpsot-spec-good" "$work/repos/fpsot-spec-nopdf"
+if bash "$here/site-build.sh" map "$work/site" fpsot-spec-nopdf v0.1.0 "$work/part-nopdf" >"$work/nopdf.log" 2>&1; then
+  echo "FAIL: map accepted a release without its French PDF"; fail=1
+fi
+grep -q 'fpsot-spec-nopdf-fr.pdf' "$work/nopdf.log" || { echo "FAIL: missing PDF not named:"; tail -5 "$work/nopdf.log"; fail=1; }
 
 if ! bash "$here/site-build.sh" home "$work/site" "$work/part-home" >"$work/home.log" 2>&1; then
   echo "FAIL: home:"; tail -30 "$work/home.log"; fail=1
