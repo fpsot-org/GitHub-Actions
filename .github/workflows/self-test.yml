@@ -90,6 +90,8 @@ jobs:
         with:
           go-version-file: tools/go.mod
           cache: false
+      # The builder image has no Python, which site-bundle.sh needs (spec-legal.py).
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 >/dev/null
       - run: bash scripts/test-site-build.sh
   site-build-callable:
     uses: ./.github/workflows/site-build.yml

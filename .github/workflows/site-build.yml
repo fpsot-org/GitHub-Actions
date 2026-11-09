@@ -74,6 +74,11 @@ jobs:
       # The checkout belongs to another user in the container: do not stamp Git data.
       - run: go build -buildvcs=false -o "$RUNNER_TEMP/bin/" ./cmd/...
         working-directory: ${{ env.TOOLS }}/tools
+      # The builder image has no Python, which reads each spec's license (spec-legal.py).
+      - name: Install Python
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends python3 >/dev/null
       # The builder image has no GitHub CLI, which downloads the release PDFs.
       - name: Install the GitHub CLI
         run: |
