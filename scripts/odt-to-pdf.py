@@ -4,10 +4,12 @@
 # Converts an ODT file to a tagged PDF/UA-1 and PDF/A-2b file with LibreOffice.
 # Unlike "soffice --convert-to", it first updates the table of contents and other
 # indexes, which a headless conversion leaves empty. For PDF/UA-1, it also gives each
-# image its text alternative (7.3) and each link a description (7.18.5).
+# image its text alternative (7.3) and each link a description (7.18.5). With a
+# notice, it puts the legal notice on a page of its own after the title page.
 #
-# Usage: odt-to-pdf.py IN.odt OUT.pdf PROFILE_DIR [ALTS.json]
+# Usage: odt-to-pdf.py IN.odt OUT.pdf PROFILE_DIR [ALTS.json [NOTICE.json]]
 #   ALTS.json: the text alternatives of the images, in document order.
+#   NOTICE.json: the legal notice, as spec-legal.py writes it.
 # Needs LibreOffice and its Python bridge (python3-uno).
 import json
 import os
@@ -18,6 +20,8 @@ import time
 
 import uno
 from com.sun.star.beans import PropertyValue
+from com.sun.star.style.BreakType import PAGE_AFTER, PAGE_BEFORE
+from com.sun.star.text.ControlCharacter import PARAGRAPH_BREAK
 
 
 def prop(name, value):
@@ -134,7 +138,40 @@ def keep_rows_together(doc):
             rows.getByIndex(r).IsSplitAllowed = False
 
 
-def main(src, out, profile, alts_file=None):
+# The paragraphs of the title block, which pandoc writes before the contents.
+TITLE_STYLES = {"Title", "Subtitle", "Author", "Date"}
+
+
+def insert_notice(doc, notice):
+    """Puts the notice paragraphs on a page of their own, after the title block and
+    before the table of contents. Links keep their address; name_links names them."""
+    text = doc.getText()
+    items = text.createEnumeration()
+    last = None
+    while items.hasMoreElements():
+        item = items.nextElement()
+        if not item.supportsService("com.sun.star.text.Paragraph") or item.ParaStyleName not in TITLE_STYLES:
+            break
+        last = item
+    if last is None:
+        sys.exit("no title block to put the notice after")
+    cursor = text.createTextCursorByRange(last.getEnd())
+    for i, runs in enumerate(notice["paragraphs"]):
+        text.insertControlCharacter(cursor, PARAGRAPH_BREAK, False)
+        cursor.ParaStyleName = "Text body"
+        cursor.BreakType = PAGE_BEFORE if i == 0 else PAGE_AFTER if i == len(notice["paragraphs"]) - 1 else 0
+        for run in runs:
+            start = cursor.getStart()
+            text.insertString(cursor, run["text"], False)
+            span = text.createTextCursorByRange(start)
+            span.gotoRange(cursor.getEnd(), True)
+            span.HyperLinkURL = run.get("href", "")
+            span.CharWeight = 150.0 if i == 0 else 100.0  # the first line names the document
+    if len(notice["paragraphs"]) == 1:
+        cursor.BreakType = PAGE_BEFORE
+
+
+def main(src, out, profile, alts_file=None, notice_file=None):
     pipe = "fpsot_pdf_%d" % os.getpid()
     office = subprocess.Popen([
         "soffice", "--headless", "--invisible", "--nologo", "--norestore",
@@ -158,6 +195,8 @@ def main(src, out, profile, alts_file=None):
             uno.systemPathToFileUrl(os.path.abspath(src)), "_blank", 0, (prop("Hidden", True),))
         if alts_file:
             set_alternatives(doc, json.load(open(alts_file, encoding="utf-8")))
+        if notice_file:
+            insert_notice(doc, json.load(open(notice_file, encoding="utf-8")))
         rename_standard_styles(doc)
         keep_rows_together(doc)
         keep_link_paragraphs_together(doc.getText())
@@ -188,6 +227,6 @@ def main(src, out, profile, alts_file=None):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (4, 5):
-        sys.exit("usage: odt-to-pdf.py IN.odt OUT.pdf PROFILE_DIR [ALTS.json]")
+    if len(sys.argv) not in (4, 5, 6):
+        sys.exit("usage: odt-to-pdf.py IN.odt OUT.pdf PROFILE_DIR [ALTS.json [NOTICE.json]]")
     main(*sys.argv[1:])

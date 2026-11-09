@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Tests for build-pdf.sh: each test book becomes a tagged PDF/UA-1 and PDF/A-2b file
-# with its title and language set, and French accents survive.
+# with its title and language set, and French accents survive. With PDF_NOTICE, the
+# legal notice is a page of its own after the title page, before the contents, and
+# its rights statement and license URL are in the XMP metadata.
 # Needs asciidoctor, pandoc, LibreOffice (soffice), poppler-utils and qpdf.
 # With VERAPDF_IMAGE set (the veraPDF CLI image), each PDF must also pass veraPDF's
 # PDF/UA-1 and PDF/A-2b checks. CONTAINER selects docker (default) or podman.
@@ -11,7 +13,7 @@ trap 'rm -rf "$work"' EXIT
 fail=0
 check_pdf() { # lang-dir lang-tag title
   pdf="$work/$1.pdf"
-  if ! bash "$here/build-pdf.sh" "$here/testdata/book/$1/book.adoc" "$pdf" "$2" >"$work/$1.log" 2>&1; then
+  if ! PDF_NOTICE="$work/notice-$1.json" bash "$here/build-pdf.sh" "$here/testdata/book/$1/book.adoc" "$pdf" "$2" >"$work/$1.log" 2>&1; then
     echo "FAIL: $1: build-pdf.sh failed:"; cat "$work/$1.log"; fail=1; return
   fi
   info="$(pdfinfo "$pdf")"
@@ -36,9 +38,29 @@ check_pdf() { # lang-dir lang-tag title
   fi
   grep -aq "/Lang ($2)" "$work/$1.qdf.pdf" || { echo "FAIL: $1: /Lang ($2) not set"; grep -ao '/Lang ([^)]*)' "$work/$1.qdf.pdf" | head -1; fail=1; }
 }
+# The notices, as spec-legal.py writes them for spec-good.
+for l in en fr; do
+  python3 -I "$here/spec-legal.py" spec "$here/../testdata/spec-good" "$l" 0.1.0 2026-11-05 \
+    https://github.com/fpsot-org/fpsot-spec-good/tree/v0.1.0 > "$work/notice-$l.json" || exit 1
+done
 check_pdf en en-US "FPSOT test specification"
 # Asciidoctor turns the apostrophe into a typographic one (U+2019).
 check_pdf fr fr-CA "Spécification d’essai FPSOT"
+# The notice is page 2, alone: the title is on page 1, the contents start on page 3.
+for l in en fr; do
+  [ -f "$work/$l.pdf" ] || continue
+  heading="Contents"; [ "$l" = fr ] && heading="Table des matières"
+  p1=$(pdftotext -f 1 -l 1 "$work/$l.pdf" -) p2=$(pdftotext -f 2 -l 2 "$work/$l.pdf" -) p3=$(pdftotext -f 3 -l 3 "$work/$l.pdf" -)
+  copyright="Copyright 2026 The FPSOT Authors"; [ "$l" = fr ] && copyright="© 2026 Les auteurs de la FPSOT"
+  grep -qF "$copyright" <<<"$p2" || { echo "FAIL: $l: page 2 is not the notice:"; head -5 <<<"$p2"; fail=1; }
+  grep -qF "$copyright" <<<"$p1$p3" && { echo "FAIL: $l: the notice is not alone on its page"; fail=1; }
+  grep -q "^$heading" <<<"$p3" || { echo "FAIL: $l: the contents do not start on page 3"; fail=1; }
+  grep -q "^$heading" <<<"$p1$p2" && { echo "FAIL: $l: the contents start before page 3"; fail=1; }
+  grep -aqF '/URI (https://github.com/CommunitySpecification/1.0)' "$work/$l.qdf.pdf" || { echo "FAIL: $l: the license is not a link"; fail=1; }
+  meta="$(pdfinfo -meta "$work/$l.pdf")"
+  grep -qF "$copyright." <<<"$meta" && grep -q '<dc:rights' <<<"$meta" || { echo "FAIL: $l: no dc:rights with the copyright"; fail=1; }
+  grep -qF 'https://github.com/CommunitySpecification/1.0' <<<"$(grep -A2 'WebStatement' <<<"$meta")" || { echo "FAIL: $l: no xmpRights:WebStatement"; fail=1; }
+done
 # The table of contents is filled in: its heading and a chapter title come before the chapter text.
 if [ -f "$work/en.pdf" ]; then
   pdftotext "$work/en.pdf" - | awk '/This chapter holds one rule/{exit} /^Rules/{n++} END{exit !(n>=2)}' \
