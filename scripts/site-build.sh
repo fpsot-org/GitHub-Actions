@@ -141,7 +141,7 @@ case "$cmd" in
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
     mkdir -p "$work/specs"
-    parts=()
+    parts=() legal=()
     while [ $# -gt 0 ]; do
       repo=$1 tag=$2
       shift 2
@@ -161,6 +161,7 @@ case "$cmd" in
       (cd "$dir" && TERMBASE="$termbase" STRICT=false DOC_RULES=false LINKML="" bash "$here/spec-generate.sh") >&2 \
         || { echo "error: $repo: generating the pages failed" >&2; exit 1; }
       parts+=("$dir" "${repo#fpsot-spec-}" "${tag#v}")
+      legal+=("$dir" "${tag#v}" "https://github.com/fpsot-org/$repo/tree/$tag")
     done
     mkdir -p "$out"
     for l in en fr; do
@@ -172,7 +173,9 @@ case "$cmd" in
       asciidoctor -b docbook5 -d book --failure-level WARN -a lang="$l" -o "$work/check-$l.xml" "$work/book-$l.adoc" \
         || { echo "error: the $l book has warnings" >&2; exit 1; }
       python3 -I "$here/book-links.py" "$work/check-$l.xml" || { echo "error: the $l book has links that lead nowhere" >&2; exit 1; }
-      bash "$here/build-pdf.sh" "$work/book-$l.adoc" "$out/fpsot-specifications-$l.pdf" "$lang" \
+      # The legal notice: each part's license and sources, and every copyright holder.
+      python3 -I "$here/spec-legal.py" book "$l" "$(date -u +%F)" "${legal[@]}" > "$work/notice-$l.json" || exit 1
+      PDF_NOTICE="$work/notice-$l.json" bash "$here/build-pdf.sh" "$work/book-$l.adoc" "$out/fpsot-specifications-$l.pdf" "$lang" \
         || { echo "error: the $l PDF build failed" >&2; exit 1; }
     done
     echo "site-build: book of $((${#parts[@]} / 3)) specs: $(cd "$out" && du -h fpsot-specifications-*.pdf | tr '\n' ' ')" >&2
