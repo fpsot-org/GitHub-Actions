@@ -67,8 +67,10 @@ Produit le 2026-11-08 à partir de la dernière version publiée de chaque spéc
 Chaque partie de ce livre est publiée sous la licence Community Specification 1.0<https://github.com/CommunitySpecification/1.0>.
 Les exemples de code qu’il contient sont publiés sous la licence Apache 2.0<https://www.apache.org/licenses/LICENSE-2.0>, sauf mention contraire.
 Sources :
-Livre de la spécification d’essai 0.1.0 : $src<$src>
-Livre de la spécification d’essai 0.1.0 : $src<$src>" "$got"
+Livre de la spécification d’essai 0.1.0 :
+$src<$src>
+Livre de la spécification d’essai 0.1.0 :
+$src<$src>" "$got"
 
 # The site: one line per language.
 got=$(legal site "$good" | python3 -I -c 'import json,sys; d=json.load(sys.stdin); [print(l, *(d[l][k] for k in ("copyright","license","license-url","code","code-url")), sep="|") for l in ("en","fr")]')

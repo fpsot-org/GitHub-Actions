@@ -17,7 +17,8 @@
 #   spec-legal.py site REPO_DIR
 #       the license line of the site pages, in each language
 # LANG: en or fr. The spec and book notices print {"lang", "paragraphs", "rights",
-# "rights_url"}: each paragraph is a list of {"text", "href"?} runs, for odt-to-pdf.py;
+# "rights_url"}: each paragraph is a list of {"text", "href"?} runs, for odt-to-pdf.py
+# ("\n" in a text is a line break);
 # "rights" is the statement for the PDF metadata (XMP dc:rights) and "rights_url"
 # the license URL (xmpRights:WebStatement).
 import json
@@ -180,7 +181,8 @@ def book_notice(lang, date, parts):
         last = len(paras)
         paras.append([{"text": "Sources" + colon(lang).rstrip()}])
         for r, version, source in repos:
-            paras.append([{"text": "%s %s%s" % (r.title, version, colon(lang))}, {"text": source, "href": source}])
+            # The URL on a line of its own: a URL that wraps breaks at a hyphen.
+            paras.append([{"text": "%s %s%s\n" % (r.title, version, colon(lang).rstrip())}, {"text": source, "href": source}])
         rights_url = LICENSES[r.license]["url"][lang]
     else:
         paras.append([{"text": "Chaque partie de ce livre est publiée sous la licence de sa spécification :" if fr

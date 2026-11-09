@@ -21,7 +21,7 @@ import time
 import uno
 from com.sun.star.beans import PropertyValue
 from com.sun.star.style.BreakType import PAGE_AFTER, PAGE_BEFORE
-from com.sun.star.text.ControlCharacter import PARAGRAPH_BREAK
+from com.sun.star.text.ControlCharacter import LINE_BREAK, PARAGRAPH_BREAK
 
 
 def prop(name, value):
@@ -161,12 +161,17 @@ def insert_notice(doc, notice):
         cursor.ParaStyleName = "Text body"
         cursor.BreakType = PAGE_BEFORE if i == 0 else PAGE_AFTER if i == len(notice["paragraphs"]) - 1 else 0
         for run in runs:
-            start = cursor.getStart()
-            text.insertString(cursor, run["text"], False)
-            span = text.createTextCursorByRange(start)
-            span.gotoRange(cursor.getEnd(), True)
-            span.HyperLinkURL = run.get("href", "")
-            span.CharWeight = 150.0 if i == 0 else 100.0  # the first line names the document
+            for n, piece in enumerate(run["text"].split("\n")):
+                if n:
+                    text.insertControlCharacter(cursor, LINE_BREAK, False)
+                if not piece:
+                    continue
+                start = cursor.getStart()
+                text.insertString(cursor, piece, False)
+                span = text.createTextCursorByRange(start)
+                span.gotoRange(cursor.getEnd(), True)
+                span.HyperLinkURL = run.get("href", "")
+                span.CharWeight = 150.0 if i == 0 else 100.0  # the first line names the document
     if len(notice["paragraphs"]) == 1:
         cursor.BreakType = PAGE_BEFORE
 
