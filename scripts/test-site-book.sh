@@ -66,6 +66,15 @@ if [ -s "$work/out/fpsot-specifications-en.pdf" ]; then
   order=$(grep -nxE 'Test spec book|Book test specification|Version 0\.[12]\.0' <<<"$text" | cut -d: -f2 | uniq | tr '\n' '|')
   [[ "$order" == *"Test spec book|Version 0.1.0|"*"Book test specification|Version 0.2.0|"* ]] \
     || { echo "FAIL: en: parts not in order, each with its version: $order"; fail=1; }
+  # Page 2 is the legal notice: each part's license and sources, every holder.
+  notice=$(pdftotext -f 2 -l 2 "$work/out/fpsot-specifications-en.pdf" -)
+  for want in "Copyright 2025-2026 The FPSOT Authors" "Copyright 2026 Example Contributor" \
+      "Each part of this book is licensed as its own specification:" "Creative Commons Attribution 4.0"; do
+    grep -qF "$want" <<<"$(tr '\n' ' ' <<<"$notice" | sed 's/  */ /g')" || { echo "FAIL: en: the notice lacks: $want"; fail=1; }
+  done
+  grep -aqF '/URI (https://github.com/fpsot-org/fpsot-spec-book/tree/v0.2.0)' "$work/fpsot-specifications-en.pdf.qdf" \
+    || { echo "FAIL: en: the notice does not link the second part's sources"; fail=1; }
+  pdfinfo -meta "$work/out/fpsot-specifications-en.pdf" | grep -q '<dc:rights' || { echo "FAIL: en: no dc:rights"; fail=1; }
   grep -q 'A test page MUST exist' <<<"$text" || { echo "FAIL: en: the first spec's text is missing"; fail=1; }
   grep -q 'MUST point back to' <<<"$text" || { echo "FAIL: en: the second spec's text is missing"; fail=1; }
   # A listing block keeps its anchors and links as written.
@@ -76,6 +85,8 @@ if [ -s "$work/out/fpsot-specifications-en.pdf" ]; then
     || { echo "FAIL: en: the guide link does not go to the site"; fail=1; }
 fi
 if [ -s "$work/out/fpsot-specifications-fr.pdf" ]; then
+  pdftotext -f 2 -l 2 "$work/out/fpsot-specifications-fr.pdf" - | grep -qF '© 2025-2026 Les auteurs de la FPSOT' \
+    || { echo "FAIL: fr: the notice lacks the copyright"; fail=1; }
   pdftotext "$work/out/fpsot-specifications-fr.pdf" - | grep -q 'Chaque appel' || { echo "FAIL: fr: the second spec's text is missing"; fail=1; }
   grep -aqF '/URI (https://fpsot.org/fr/book/guides/how-to/)' "$work/fpsot-specifications-fr.pdf.qdf" \
     || { echo "FAIL: fr: the guide link does not go to the site"; fail=1; }

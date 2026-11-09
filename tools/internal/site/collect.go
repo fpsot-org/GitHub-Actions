@@ -4,6 +4,7 @@ package site
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -27,6 +28,9 @@ type Options struct {
 	RepoURL     string            // https URL of the spec repository
 	SiteURL     string            // https URL of the site
 	PDFs        map[string]string // the spec's PDF file in each language ("en", "fr"), if any
+	Legal       string            // JSON file of the copyright and licenses, as spec-legal.py site writes it
+
+	legal map[string]map[string]string // set by Collect from Legal
 
 	pdfLinks map[string]pdfLink // set by Collect: each PDF's URL and size
 
@@ -84,6 +88,15 @@ func Collect(opt Options) error {
 	}
 	if opt.PublicDir == "" {
 		opt.PublicDir = filepath.Join(opt.OutDir, "public")
+	}
+	if opt.Legal != "" {
+		data, err := os.ReadFile(opt.Legal)
+		if err != nil {
+			return fmt.Errorf("legal: %w", err)
+		}
+		if err := json.Unmarshal(data, &opt.legal); err != nil {
+			return fmt.Errorf("legal: %s: %w", opt.Legal, err)
+		}
 	}
 	// The PDF of each language goes next to that language's pages.
 	opt.pdfLinks = map[string]pdfLink{}
@@ -238,6 +251,13 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, s
 	if pdf, ok := opt.pdfLinks[otherLangCode(p.Lang)]; ok {
 		line("page-pdf-other", pdf.URL)
 		line("page-pdf-other-bytes", fmt.Sprint(pdf.Bytes))
+	}
+	// The spec's own copyright and licenses, which differ from the site's.
+	for _, kv := range [][2]string{{"page-copyright", "copyright"}, {"page-license", "license"}, {"page-license-url", "license-url"},
+		{"page-code-license", "code"}, {"page-code-license-url", "code-url"}} {
+		if v := opt.legal[p.Lang][kv[1]]; v != "" {
+			line(kv[0], v)
+		}
 	}
 	line("revnumber", opt.Version)
 	line("contributing-url", strings.TrimSuffix(opt.RepoURL, "/")+"/blob/main/CONTRIBUTING.md")

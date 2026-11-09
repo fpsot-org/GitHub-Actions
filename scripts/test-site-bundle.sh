@@ -27,6 +27,8 @@ for f in good/index.adoc fr/good/index.adoc good/compare/pages/ca/index.adoc fr/
   [ -f "$work/content/$f" ] || { echo "FAIL: $f not written"; fail=1; }
 done
 grep -q '^:page-version: 0.1.0$' "$work/content/good/index.adoc" 2>/dev/null || { echo "FAIL: version missing"; fail=1; }
+grep -qx ':page-license: Community Specification License 1.0' "$work/content/good/index.adoc" 2>/dev/null || { echo "FAIL: spec license missing"; fail=1; }
+grep -qx ':page-copyright: © 2026 Les auteurs de la FPSOT' "$work/content/fr/good/index.adoc" 2>/dev/null || { echo "FAIL: French copyright missing"; fail=1; }
 grep -q '^:spec-repo-url: https://github.com/fpsot-org/fpsot-spec-good$' "$work/content/good/index.adoc" 2>/dev/null || { echo "FAIL: repo URL not normalised"; fail=1; }
 mkdir -p "$work/pdf"
 printf '%%PDF-1.7 en' > "$work/pdf/fpsot-spec-good-en.pdf"

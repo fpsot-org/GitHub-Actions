@@ -323,3 +323,35 @@ func TestCollectPDFs(t *testing.T) {
 		t.Fatalf("want an error naming the missing PDF, got %v", err)
 	}
 }
+
+// With the legal data of the spec, each page names its copyright and licenses, in its language.
+func TestCollectLegal(t *testing.T) {
+	legal := filepath.Join(t.TempDir(), "legal.json")
+	os.WriteFile(legal, []byte(`{"en": {"copyright": "Copyright 2026 The FPSOT Authors", "license": "Community Specification License 1.0",
+  "license-url": "https://github.com/CommunitySpecification/1.0", "code": "Apache License 2.0", "code-url": "https://www.apache.org/licenses/LICENSE-2.0"},
+ "fr": {"copyright": "© 2026 Les auteurs de la FPSOT", "license": "licence Community Specification 1.0",
+  "license-url": "https://github.com/CommunitySpecification/1.0", "code": "", "code-url": ""}}`), 0o644)
+	out := t.TempDir()
+	err := Collect(Options{Spec: "writing", Root: "/writing", SrcDir: fixture, OutDir: out, Version: "0.1.1",
+		DefaultDate: "2026-11-03", RepoURL: "https://github.com/fpsot-org/fpsot-spec-writing", SiteURL: "https://fpsot.org", Legal: legal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	en := read(t, filepath.Join(out, "writing/guides/guide/index.adoc"))
+	for _, w := range []string{":page-copyright: Copyright 2026 The FPSOT Authors\n", ":page-license: Community Specification License 1.0\n",
+		":page-license-url: https://github.com/CommunitySpecification/1.0\n", ":page-code-license: Apache License 2.0\n",
+		":page-code-license-url: https://www.apache.org/licenses/LICENSE-2.0\n"} {
+		if !strings.Contains(en, w) {
+			t.Errorf("English page lacks %q", strings.TrimSpace(w))
+		}
+	}
+	fr := read(t, filepath.Join(out, "fr/writing/index.adoc"))
+	if !strings.Contains(fr, ":page-copyright: © 2026 Les auteurs de la FPSOT\n") || strings.Contains(fr, ":page-code-license") {
+		t.Errorf("French page header wrong:\n%s", fr)
+	}
+	err = Collect(Options{Spec: "writing", Root: "/writing", SrcDir: fixture, OutDir: t.TempDir(), Version: "0.1.1",
+		DefaultDate: "2026-11-03", RepoURL: "u", SiteURL: "s", Legal: filepath.Join(t.TempDir(), "nope.json")})
+	if err == nil || !strings.Contains(err.Error(), "nope.json") {
+		t.Fatalf("want an error naming the missing legal file, got %v", err)
+	}
+}

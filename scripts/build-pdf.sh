@@ -9,6 +9,9 @@
 # Usage: build-pdf.sh BOOK.adoc OUT.pdf LANG     (LANG: en-US or fr-CA)
 # Extra Asciidoctor attributes can be passed in ASCIIDOCTOR_ATTRS, for example
 # ASCIIDOCTOR_ATTRS="-a revnumber=0.1.0".
+# PDF_NOTICE names the legal notice, as spec-legal.py writes it: it becomes a page of
+# its own after the title page, and its rights statement and license URL go into
+# the XMP metadata (dc:rights, xmpRights:WebStatement). That step needs pikepdf.
 set -euo pipefail
 book=${1:?usage: build-pdf.sh BOOK.adoc OUT.pdf LANG}
 out=${2:?usage: build-pdf.sh BOOK.adoc OUT.pdf LANG}
@@ -38,8 +41,16 @@ for media in (e for e in ET.parse(sys.argv[1]).getroot().iter() if e.tag in kind
     alts.append("".join(phrase.itertext()).strip() if phrase is not None else "")
 print(json.dumps(alts, ensure_ascii=False))
 PY
-python3 "$(dirname "$0")/odt-to-pdf.py" "$work/book.odt" "$work/book.pdf" "$work/profile" "$work/alts.json" >"$work/soffice.log" 2>&1 \
+notice=()
+if [ -n "${PDF_NOTICE:-}" ]; then
+  [ -s "$PDF_NOTICE" ] || { echo "PDF_NOTICE: $PDF_NOTICE is missing or empty" >&2; exit 1; }
+  notice=("$PDF_NOTICE")
+fi
+python3 "$(dirname "$0")/odt-to-pdf.py" "$work/book.odt" "$work/book.pdf" "$work/profile" "$work/alts.json" "${notice[@]}" >"$work/soffice.log" 2>&1 \
   || { cat "$work/soffice.log" >&2; exit 1; }
 [ -s "$work/book.pdf" ] || { echo "LibreOffice did not write a PDF" >&2; cat "$work/soffice.log" >&2; exit 1; }
+if [ -n "${PDF_NOTICE:-}" ]; then
+  python3 "$(dirname "$0")/pdf-rights.py" "$work/book.pdf" "$PDF_NOTICE" || exit 1
+fi
 mkdir -p "$(dirname "$out")"
 mv "$work/book.pdf" "$out"

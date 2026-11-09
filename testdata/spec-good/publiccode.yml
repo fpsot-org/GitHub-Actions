@@ -1,2 +1,4 @@
 publiccodeYmlVersion: "0.4"
 name: test
+legal:
+  license: Community-Spec-1.0

@@ -232,21 +232,16 @@ jobs:
           curl -sfLo "$RUNNER_TEMP/pandoc.deb" "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb"
           echo "$PANDOC_SHA256  $RUNNER_TEMP/pandoc.deb" | sha256sum -c -
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno poppler-utils "$RUNNER_TEMP/pandoc.deb" >/dev/null
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno python3-pikepdf poppler-utils "$RUNNER_TEMP/pandoc.deb" >/dev/null
       - if: steps.has.outputs.book == 'true'
         name: Build the PDF books
         run: |
           tar -xf "$RUNNER_TEMP/generated.tar"
+          # The legal notice names the version, its date and its sources.
           if [ "$GITHUB_REF_TYPE" = tag ]; then v=${GITHUB_REF_NAME#v}; else v=unreleased; fi
-          export ASCIIDOCTOR_ATTRS="-a revnumber=$v"
-          mkdir -p "$RUNNER_TEMP/book"
-          name=$(basename "$GITHUB_REPOSITORY")
-          for l in en fr; do
-            [ -f "spec/$l/book.adoc" ] || continue
-            tag=en-US; [ "$l" = fr ] && tag=fr-CA
-            bash "$TOOLS/scripts/build-pdf.sh" "spec/$l/book.adoc" "$RUNNER_TEMP/book/$name-$l.pdf" "$tag"
-            pdfinfo "$RUNNER_TEMP/book/$name-$l.pdf" | grep -q '^Tagged: *yes'
-          done
+          source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$GITHUB_REF_NAME"
+          [ "$GITHUB_REF_TYPE" = tag ] || source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$GITHUB_SHA"
+          bash "$TOOLS/scripts/spec-pdfs.sh" . "$RUNNER_TEMP/book" "$(basename "$GITHUB_REPOSITORY")" "$v" "$(git log -1 --format=%cs)" "$source"
       - if: steps.has.outputs.book == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

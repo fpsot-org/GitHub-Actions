@@ -19,6 +19,7 @@ jobs:
       - run: bash scripts/test-resolve-major-tag.sh
       - run: bash scripts/test-fetch-spec-file.sh
       - run: bash scripts/test-site-build-names.sh
+      - run: bash scripts/test-release-pdfs.sh
   actionlint:
     runs-on: ubuntu-latest
     steps:
@@ -67,11 +68,13 @@ jobs:
           curl -sfLo "$RUNNER_TEMP/pandoc.deb" "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb"
           echo "$PANDOC_SHA256  $RUNNER_TEMP/pandoc.deb" | sha256sum -c -
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno poppler-utils qpdf "$RUNNER_TEMP/pandoc.deb" >/dev/null
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno python3-pikepdf poppler-utils qpdf "$RUNNER_TEMP/pandoc.deb" >/dev/null
       - run: bash scripts/test-spec-generate.sh
       - run: bash scripts/test-build-pdf.sh
         env:
           VERAPDF_IMAGE: docker.io/verapdf/cli@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb # v1.30.3
+      - run: bash scripts/test-spec-legal.sh
+      - run: bash scripts/test-spec-pdfs.sh
       - run: bash scripts/test-site-bundle.sh
       - run: bash scripts/test-site-book.sh
         env:
@@ -87,6 +90,8 @@ jobs:
         with:
           go-version-file: tools/go.mod
           cache: false
+      # The builder image has no Python, which site-bundle.sh needs (spec-legal.py).
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 >/dev/null
       - run: bash scripts/test-site-build.sh
   site-build-callable:
     uses: ./.github/workflows/site-build.yml

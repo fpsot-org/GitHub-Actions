@@ -14,6 +14,7 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 | `signed-commits.yml` | `tools-ref` (`v0`) | On a pull request: GitHub verified the signature of every commit. The caller job must grant `pull-requests: read`. |
 | `spec-release.yml` | `prefix` (required), `working-directory` (`.`), `tools-ref` (`v0`), `writing-ref`, `doc-ref`, `doc-rules` (false) | On a release tag: the tag is an annotated `vX.Y.Z` whose signature GitHub verified, then `spec-check` runs in strict mode, then the GitHub release is created with the PDF books, then the site is told to rebuild through the fpsot-ci GitHub App. The caller job must grant `contents: write` and pass `secrets: inherit`; the org sets the variable `FPSOT_CI_APP_CLIENT_ID` and the secret `FPSOT_CI_APP_PRIVATE_KEY`. |
 | `site-build.yml` | `tools-ref` (`v0`), `working-directory` (`.`), `builder-image` (pinned) | For the site repo: builds each spec listed in `data/specs.yml` in its own Roq build, in parallel, with its release PDFs. Builds one PDF per language with every spec (`/fpsot-specifications-en.pdf`, `/fr/fpsot-specifications-fr.pdf`) and checks it with veraPDF. Builds the home pages in one more Roq build. Merges them, checks that the site makes no external requests, checks every link offline and uploads the GitHub Pages artifact. The builds run in the website builder image. |
+| `spec-pdf-refresh.yml` | `repo`, `tag` (required), `publish` (false), `writing-ref` | Run by hand (`gh workflow run spec-pdf-refresh.yml -R fpsot-org/GitHub-Actions -f repo=fpsot-spec-x -f tag=v0.1.0`): rebuilds the PDF books of a published release with the current tools and checks them with veraPDF. With `publish=true`, replaces the release's PDF assets and adds a note to its release notes, through the fpsot-ci GitHub App, which then needs Contents: write on that repo. The tag does not change. |
 
 ## Tools
 
@@ -34,7 +35,10 @@ Call them from a spec repo and pin them to the major tag `@v0`.
 - `scripts/book-combine.py`: writes one AsciiDoc book with several specs, each as a part. It gives each spec's IDs its own prefix, so that IDs such as glossary anchors never collide.
   `scripts/book-links.py` checks that every link of the book leads somewhere.
 - `scripts/check-site-offline.sh`: a built site makes no request to another host and runs no script other than the theme toggle.
-- `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice. It keeps the text alternative of each image and names each link, which PDF/UA-1 requires.
+- `scripts/build-pdf.sh`: AsciiDoc book to tagged PDF/UA-1 and PDF/A-2b, through DocBook, pandoc and LibreOffice. It keeps the text alternative of each image and names each link, which PDF/UA-1 requires. With `PDF_NOTICE`, it adds the legal notice page after the title page, and the rights statement to the XMP metadata (`scripts/pdf-rights.py`).
+- `scripts/spec-legal.py`: the legal notice of a spec, of the combined book, or of the site pages, in English and French. It reads the copyright from `NOTICE`, the spec license from `publiccode.yml` (`legal.license`) and the code license from `LICENSE.md`.
+- `scripts/spec-pdfs.sh`: the PDF books of a generated spec, with their legal notice. `spec-check.yml` and `spec-pdf-refresh.yml` use it.
+- `scripts/release-pdfs.sh`: replaces the PDF assets of an existing release and adds a note to its release notes.
 - `scripts/resolve-major-tag.sh` and `scripts/fetch-spec-file.sh`: take a file from another spec at its highest `v0` tag.
 
 ## Rules for this repository
