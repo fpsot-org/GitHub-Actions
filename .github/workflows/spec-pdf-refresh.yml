@@ -1,0 +1,151 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Rebuilds the PDF books of a published spec release with the current tools, for
+# example to add the legal notice page to a release made before it existed. The
+# PDFs are built from the sources at the tag, like spec-check does, and checked
+# with veraPDF (PDF/UA-1 and PDF/A-2b). The tag and the release stay as they are.
+#
+# Run it by hand, from this repo:
+#   gh workflow run spec-pdf-refresh.yml -R fpsot-org/GitHub-Actions \
+#     -f repo=fpsot-spec-testing -f tag=v0.1.0              (build and check only)
+#   gh workflow run spec-pdf-refresh.yml -R fpsot-org/GitHub-Actions \
+#     -f repo=fpsot-spec-testing -f tag=v0.1.0 -f publish=true
+# Without publish, the PDFs are only kept as the run's "spec-pdfs" artifact, to read
+# first. With publish, they replace the release's PDF assets and the release notes
+# get a note, in English and French (scripts/release-pdfs.sh). Publishing writes to
+# the spec repo through the fpsot-ci GitHub App: the App needs "Contents: write" on
+# that repo, and this repo needs the org variable FPSOT_CI_APP_CLIENT_ID and the org
+# secret FPSOT_CI_APP_PRIVATE_KEY.
+name: spec-pdf-refresh
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Spec repo in fpsot-org, such as fpsot-spec-testing.
+        type: string
+        required: true
+      tag:
+        description: Release tag, vX.Y.Z.
+        type: string
+        required: true
+      publish:
+        description: Replace the release's PDFs and add a note to its release notes. Off = build and check only.
+        type: boolean
+        default: false
+      writing-ref:
+        description: Ref of fpsot-org/fpsot-spec-writing for the term base. Empty = its highest v0 tag.
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: spec-pdf-refresh-${{ inputs.repo }}-${{ inputs.tag }}
+  cancel-in-progress: false
+env:
+  TOOLS: ${{ github.workspace }}/.fpsot-tools
+  PANDOC_VERSION: '3.13'
+  PANDOC_SHA256: 7e3736f255090296ca5d1a14291a76b9b3c43cd385011b1621a4d0c16091a70f
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the inputs
+        env:
+          REPO: ${{ inputs.repo }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          [[ $REPO =~ ^fpsot-spec-[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "'$REPO' is not a spec repo name (fpsot-spec-<name>)"; exit 1; }
+          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "'$TAG' is not a release tag (vX.Y.Z)"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: .fpsot-tools
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fpsot-org/${{ inputs.repo }}
+          ref: refs/tags/${{ inputs.tag }}
+          path: spec
+      - name: Check the tag and its release
+        working-directory: spec
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: fpsot-org/${{ inputs.repo }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          git fetch --force --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG"
+          bash "$TOOLS/scripts/check-release-tag.sh" "$TAG"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .fpsot-tools/tools/go.mod
+          cache: false
+      - run: go build -o "$RUNNER_TEMP/bin/" ./cmd/...
+        working-directory: .fpsot-tools/tools
+      - uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          ruby-version: '3.3'
+      - name: Install Asciidoctor, pandoc, LibreOffice and PDF tools
+        run: |
+          gem install asciidoctor -v 2.0.26 --no-document
+          curl -sfLo "$RUNNER_TEMP/pandoc.deb" "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb"
+          echo "$PANDOC_SHA256  $RUNNER_TEMP/pandoc.deb" | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui python3-uno python3-pikepdf poppler-utils "$RUNNER_TEMP/pandoc.deb" >/dev/null
+      - name: Generate the glossaries and build the PDFs
+        working-directory: spec
+        env:
+          REPO: ${{ inputs.repo }}
+          TAG: ${{ inputs.tag }}
+          WRITING_REF: ${{ inputs.writing-ref }}
+        run: |
+          if [ -f termbase/terms.yaml ]; then termbase="$PWD/termbase/terms.yaml"
+          else
+            termbase="$RUNNER_TEMP/terms.yaml"
+            bash "$TOOLS/scripts/fetch-spec-file.sh" https://github.com/fpsot-org/fpsot-spec-writing.git "$WRITING_REF" termbase/terms.yaml "$termbase"
+          fi
+          TOOLS_BIN="$RUNNER_TEMP/bin" TERMBASE="$termbase" STRICT=false DOC_RULES=false LINKML="" bash "$TOOLS/scripts/spec-generate.sh"
+          bash "$TOOLS/scripts/spec-pdfs.sh" . "$RUNNER_TEMP/pdf" "$REPO" "${TAG#v}" "$(git log -1 --format=%cs)" \
+            "https://github.com/fpsot-org/$REPO/tree/$TAG"
+      - name: Check the PDFs with veraPDF (PDF/UA-1 and PDF/A-2b)
+        env:
+          VERAPDF_IMAGE: docker.io/verapdf/cli@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb # v1.30.3
+        run: |
+          chmod -R a+rX "$RUNNER_TEMP/pdf"
+          status=0
+          for pdf in "$RUNNER_TEMP"/pdf/*.pdf; do
+            for flavour in ua1 2b; do
+              result=$(docker run --rm -v "$RUNNER_TEMP/pdf:/data" "$VERAPDF_IMAGE" --format text --flavour "$flavour" "/data/$(basename "$pdf")" 2>&1 | tail -1)
+              echo "$result" | tee -a "$GITHUB_STEP_SUMMARY"
+              [[ "$result" == PASS* ]] || status=1
+            done
+          done
+          exit $status
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spec-pdfs
+          path: ${{ runner.temp }}/pdf
+          if-no-files-found: error
+  publish:
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: .fpsot-tools
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: spec-pdfs
+          path: pdf
+      - id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FPSOT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FPSOT_CI_APP_PRIVATE_KEY }}
+          owner: fpsot-org
+          repositories: ${{ inputs.repo }}
+      - name: Replace the PDFs and add the note
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          REPO: ${{ inputs.repo }}
+          TAG: ${{ inputs.tag }}
+        run: bash "$TOOLS/scripts/release-pdfs.sh" "$REPO" "$TAG" pdf
