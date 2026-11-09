@@ -3,7 +3,8 @@
 #
 # Turns one spec repository, checked out at a release tag with its history, into
 # content for the fpsot.org site. It generates the derived pages (glossaries,
-# comparison pages) and runs sitecollect, which writes each page at its site URL.
+# comparison pages) and runs sitecollect, which writes each page at its site URL,
+# with the spec's copyright and licenses (spec-legal.py).
 # The release already ran the strict checks, so this step does not repeat them.
 #
 # Usage: site-bundle.sh REPO_DIR CONTENT_DIR [PUBLIC_DIR]
@@ -59,6 +60,9 @@ git -C "$repo_dir" ls-files -- 'spec/*.adoc' 'docs/*.adoc' | while read -r f; do
 done > "$work/dates.tsv"
 tag_date=$(git -C "$repo_dir" log -1 --format=%cs "$tag")
 
+# The spec's own copyright and licenses, from NOTICE, publiccode.yml and LICENSE.md.
+python3 -I "$here/spec-legal.py" site "$repo_dir" > "$work/legal.json" || { echo "error: $name: reading its license failed" >&2; exit 1; }
+
 pdfs=()
 if [ -n "${PDF_DIR:-}" ]; then
   for l in en fr; do
@@ -71,4 +75,4 @@ fi
 
 "$TOOLS_BIN/sitecollect" -spec "$spec" -src "$repo_dir" -out "$content" -public "$public" \
   -version "$version" -dates "$work/dates.tsv" -default-date "$tag_date" \
-  -repo-url "$repo_url" -site-url "${SITE_URL:-https://fpsot.org}" "${pdfs[@]}" || { echo "error: $name: sitecollect failed" >&2; exit 1; }
+  -repo-url "$repo_url" -site-url "${SITE_URL:-https://fpsot.org}" -legal "$work/legal.json" "${pdfs[@]}" || { echo "error: $name: sitecollect failed" >&2; exit 1; }

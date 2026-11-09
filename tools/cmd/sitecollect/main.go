@@ -7,7 +7,7 @@
 //	sitecollect -spec writing -src . -out SITE/content -public SITE/public \
 //	  -version 0.1.1 -dates dates.tsv -default-date 2026-11-03 \
 //	  -repo-url https://github.com/fpsot-org/fpsot-spec-writing \
-//	  -pdf-en fpsot-spec-writing-en.pdf -pdf-fr fpsot-spec-writing-fr.pdf
+//	  -pdf-en fpsot-spec-writing-en.pdf -pdf-fr fpsot-spec-writing-fr.pdf -legal legal.json
 package main
 
 import (
@@ -36,6 +36,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	siteURL := fl.String("site-url", "https://fpsot.org", "https URL of the site")
 	pdfEN := fl.String("pdf-en", "", "the spec's English PDF, to publish and link from each page")
 	pdfFR := fl.String("pdf-fr", "", "the spec's French PDF, to publish and link from each page")
+	legal := fl.String("legal", "", "JSON file of the spec's copyright and licenses (spec-legal.py site)")
 	if err := fl.Parse(args); err != nil {
 		return 2
 	}
@@ -61,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if *pdfFR != "" {
 		pdfs["fr"] = *pdfFR
 	}
-	err := site.Collect(site.Options{PDFs: pdfs, Spec: *spec, Root: *root, SrcDir: *src, OutDir: *out, PublicDir: *public,
+	err := site.Collect(site.Options{PDFs: pdfs, Legal: *legal, Spec: *spec, Root: *root, SrcDir: *src, OutDir: *out, PublicDir: *public,
 		Version: *version, Dates: d, DefaultDate: *defaultDate, RepoURL: *repoURL, SiteURL: *siteURL})
 	if err != nil {
 		fmt.Fprintln(stderr, "sitecollect:", err)
