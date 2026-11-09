@@ -20,6 +20,7 @@ jobs:
       - run: bash scripts/test-fetch-spec-file.sh
       - run: bash scripts/test-site-build-names.sh
       - run: bash scripts/test-release-pdfs.sh
+      - run: bash scripts/test-release-create.sh
   actionlint:
     runs-on: ubuntu-latest
     steps:
