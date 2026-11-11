@@ -40,7 +40,7 @@ func dirURL(rel string) string {
 }
 
 // Route maps a source file to its page. ok is false for files that are not pages:
-// partials (names starting with "_"), non-AsciiDoc files and files outside spec/
+// partials (names starting with "_"), non-AsciiDoc files and files outside spec/<lang>/
 // and docs/modules/<lang>/pages/. root is the URL root of the spec without the
 // language, such as "/writing".
 func Route(spec, root, src string) (Page, bool, error) {
@@ -51,15 +51,16 @@ func Route(spec, root, src string) (Page, bool, error) {
 	parts := strings.Split(src, "/")
 	var lang, rest string
 	switch {
-	case len(parts) == 3 && parts[0] == "spec":
+	case len(parts) >= 3 && parts[0] == "spec":
 		lang = parts[1]
+		// The first name under spec/<lang>/, a page or a folder, is a folder on the site.
 		page := strings.TrimSuffix(parts[2], ".adoc")
 		for _, r := range Reserved {
 			if page == r {
 				return Page{}, false, fmt.Errorf("%s: %q is a reserved name on the site (%s)", src, page, strings.Join(Reserved, ", "))
 			}
 		}
-		rest = dirURL(parts[2])
+		rest = dirURL(strings.Join(parts[2:], "/"))
 	case len(parts) >= 5 && parts[0] == "docs" && parts[1] == "modules" && parts[3] == "pages":
 		lang = parts[2]
 		in := strings.Join(parts[4:], "/")

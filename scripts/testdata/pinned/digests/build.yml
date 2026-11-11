@@ -1,0 +1,7 @@
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/example/builder@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    steps:
+      - run: echo build

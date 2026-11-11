@@ -172,7 +172,7 @@ func Collect(opt Options) error {
 	specTitles := map[string]string{}
 	for _, lang := range []string{"en", "fr"} {
 		if body, err := os.ReadFile(filepath.Join(opt.SrcDir, "spec", lang, "index.adoc")); err == nil {
-			if title, _, _ := strings.Cut(string(body), "\n"); strings.HasPrefix(title, "= ") {
+			if title, _, ok := pageTitle(body); ok {
 				specTitles[lang] = strings.TrimSpace(strings.TrimPrefix(title, "= "))
 			}
 		}
@@ -220,10 +220,9 @@ func Collect(opt Options) error {
 // pageFile builds the page Roq renders: the source's title, the header block, and
 // an include of the rest of the source from the mirror.
 func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, specTitle string) ([]byte, error) {
-	title, _, _ := strings.Cut(string(body), "\n")
-	title = strings.TrimRight(strings.TrimPrefix(title, "\ufeff"), "\r")
-	if !strings.HasPrefix(title, "= ") {
-		return nil, fmt.Errorf("%s: the first line must be the page title (\"= …\")", p.Src)
+	title, at, ok := pageTitle(body)
+	if !ok {
+		return nil, fmt.Errorf("%s: the first line, after any comments, must be the page title (\"= …\")", p.Src)
 	}
 	date := opt.Dates[p.Src]
 	if date == "" {
@@ -270,7 +269,7 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, s
 	}
 	// The source's own header attributes, such as :toc: or :doctype: book, would not
 	// take effect in the body: they go into the page header too.
-	for _, l := range strings.Split(string(body), "\n")[1:] {
+	for _, l := range strings.Split(string(body), "\n")[at+1:] {
 		l = strings.TrimRight(l, "\r")
 		if strings.TrimSpace(l) == "" {
 			break
@@ -289,9 +288,30 @@ func pageFile(opt Options, p Page, body []byte, pages map[string]Page, mirror, s
 	if !strings.HasSuffix(string(body), "\n") {
 		n++
 	}
-	// The open range "2..-1" is ignored, so the range names the last line.
-	fmt.Fprintf(&b, "\ninclude::%s[lines=2..%d]\n", filepath.ToSlash(abs), n)
+	// The open range "2..-1" is ignored, so the range names the last line. The range
+	// starts after the title, and leaves out the comments before it.
+	fmt.Fprintf(&b, "\ninclude::%s[lines=%d..%d]\n", filepath.ToSlash(abs), at+2, n)
 	return []byte(b.String()), nil
+}
+
+// pageTitle returns the title line of a page ("= …") and its index among the lines.
+// Comment lines and comment blocks may come before it.
+func pageTitle(body []byte) (string, int, bool) {
+	lines := strings.Split(strings.TrimPrefix(string(body), "\ufeff"), "\n")
+	inComment := false
+	for i, l := range lines {
+		l = strings.TrimRight(l, "\r")
+		switch {
+		case blockRe.MatchString(l) && strings.HasPrefix(l, "////"):
+			inComment = !inComment
+		case inComment || strings.HasPrefix(l, "//"):
+		case strings.HasPrefix(l, "= "):
+			return l, i, true
+		default:
+			return "", 0, false
+		}
+	}
+	return "", 0, false
 }
 
 func write(p string, data []byte) error {

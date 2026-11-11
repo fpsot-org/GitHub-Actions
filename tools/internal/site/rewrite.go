@@ -12,12 +12,22 @@ import (
 
 var (
 	xrefRe  = regexp.MustCompile(`xref:([^\[\s#]+\.adoc)(#[^\[\s]*)?\[`)
-	crossRe = regexp.MustCompile(`<<([^<>#,\s]+\.adoc)(#[^,>]*)?(?:,([^>]*))?>>`)
-	imageRe = regexp.MustCompile(`(image::?)([^\[\s:]+)\[`)
+	crossRe = regexp.MustCompile(`<<([^<>#,\s]+)(#[^,>]*)?(?:,([^>]*))?>>`)
+	imageRe = regexp.MustCompile(`\b(image::?)([^\[\s:]+)\[`)
+	// Delimiters of listing, literal, passthrough and comment blocks (four or more
+	// of the same character), and of fenced code: lines inside are left unchanged.
+	blockRe = regexp.MustCompile("^(-{4,}|\\.{4,}|\\+{4,}|/{4,}|```.*)$")
+	// Inline passthroughs (+…+, ++…++, +++…+++, pass:[…]) keep their text as written.
+	passRe = regexp.MustCompile(`\+\+\+.+?\+\+\+|\+\+.+?\+\+|\+[^+\s](?:[^+]*?[^+\s])?\+|pass:[a-z,]*\[(?:[^\]\\]|\\.)*\]`)
 )
 
-// listing delimiters: lines between a pair are code, and are left unchanged.
-var listing = map[string]bool{"----": true, "....": true, "++++": true}
+// blockKey is the line that closes the block a delimiter line opens.
+func blockKey(line string) string {
+	if strings.HasPrefix(line, "```") {
+		return "```"
+	}
+	return line
+}
 
 // Rewrite changes every link to another page into a site URL, and every relative
 // image path into its site path. Targets resolve relative to fromSrc's folder.
@@ -39,10 +49,10 @@ func Rewrite(body []byte, fromSrc string, resolve func(targetSrc string) (string
 	for i, raw := range lines {
 		line := string(raw)
 		trimmed := strings.TrimRight(line, "\r")
-		if listing[trimmed] {
+		if blockRe.MatchString(trimmed) {
 			switch open {
 			case "":
-				open = trimmed
+				open = blockKey(trimmed)
 			case trimmed:
 				open = ""
 			}
@@ -51,6 +61,12 @@ func Rewrite(body []byte, fromSrc string, resolve func(targetSrc string) (string
 		if open != "" || strings.HasPrefix(line, "//") {
 			continue
 		}
+		// Passthroughs are set aside while the links are rewritten.
+		var kept []string
+		line = passRe.ReplaceAllStringFunc(line, func(m string) string {
+			kept = append(kept, m)
+			return fmt.Sprintf("\x00%d\x00", len(kept)-1)
+		})
 		line = xrefRe.ReplaceAllStringFunc(line, func(m string) string {
 			g := xrefRe.FindStringSubmatch(m)
 			u, ok := target(g[1])
@@ -61,11 +77,18 @@ func Rewrite(body []byte, fromSrc string, resolve func(targetSrc string) (string
 		})
 		line = crossRe.ReplaceAllStringFunc(line, func(m string) string {
 			g := crossRe.FindStringSubmatch(m)
-			u, ok := target(g[1])
+			doc := g[1]
+			if !strings.HasSuffix(doc, ".adoc") {
+				if g[2] == "" {
+					return m // <<id>>: in the page
+				}
+				doc += ".adoc" // <<doc#id>>
+			}
+			u, ok := target(doc)
 			if !ok {
 				return m
 			}
-			return "link:" + u + g[2] + "[" + g[3] + "]"
+			return "link:" + u + g[2] + "[" + strings.ReplaceAll(g[3], "]", "\\]") + "]"
 		})
 		line = imageRe.ReplaceAllStringFunc(line, func(m string) string {
 			g := imageRe.FindStringSubmatch(m)
@@ -78,6 +101,9 @@ func Rewrite(body []byte, fromSrc string, resolve func(targetSrc string) (string
 			}
 			return g[1] + u + "["
 		})
+		for k, m := range kept {
+			line = strings.Replace(line, fmt.Sprintf("\x00%d\x00", k), m, 1)
+		}
 		lines[i] = []byte(line)
 	}
 	return bytes.Join(lines, []byte("\n")), problems
