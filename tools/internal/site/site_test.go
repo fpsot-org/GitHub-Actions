@@ -355,3 +355,93 @@ func TestCollectLegal(t *testing.T) {
 		t.Fatalf("want an error naming the missing legal file, got %v", err)
 	}
 }
+
+// Code and comment blocks with longer delimiters, fenced code, and comment blocks are
+// left as they are.
+func TestRewriteSkipsOtherBlocks(t *testing.T) {
+	for _, in := range []string{
+		"------\nxref:missing.adoc[x]\n------\n",
+		"......\nxref:missing.adoc[x]\n......\n",
+		"////\nxref:missing.adoc[x]\n////\n",
+		"```adoc\nxref:missing.adoc[x]\n```\n",
+		"------\n----\nxref:missing.adoc[x]\n------\n",
+	} {
+		if got, p := rewrite(t, "spec/en/index.adoc", in); got != in || len(p) != 0 {
+			t.Errorf("in %q: got %q, problems %v", in, got, p)
+		}
+	}
+	// After the block closes, links are rewritten again.
+	got, _ := rewrite(t, "spec/en/index.adoc", "------\nx\n------\nxref:keywords.adoc[K]\n")
+	if got != "------\nx\n------\nlink:/writing/keywords/[K]\n" {
+		t.Errorf("after block: %q", got)
+	}
+}
+
+// Inline passthroughs show their text as written.
+func TestRewriteSkipsPassthroughs(t *testing.T) {
+	for _, in := range []string{
+		"Write +xref:missing.adoc[x]+ for a link.\n",
+		"Write ++xref:missing.adoc[x]++ for a link.\n",
+		"Write +++xref:missing.adoc[x]+++ for a link.\n",
+		"Write pass:[xref:missing.adoc[x\\]] for a link.\n",
+		"Write pass:q[<<missing.adoc#a,b>>] for a link.\n",
+	} {
+		if got, p := rewrite(t, "spec/en/index.adoc", in); got != in || len(p) != 0 {
+			t.Errorf("in %q: got %q, problems %v", in, got, p)
+		}
+	}
+	got, _ := rewrite(t, "spec/en/index.adoc", "Write +x+ and see xref:keywords.adoc[K].\n")
+	if got != "Write +x+ and see link:/writing/keywords/[K].\n" {
+		t.Errorf("outside passthrough: %q", got)
+	}
+}
+
+// A "]" in the text of <<…,text>> is escaped in the link macro.
+func TestRewriteCrossReferenceBracket(t *testing.T) {
+	if got, _ := rewrite(t, "spec/en/index.adoc", "<<keywords.adoc#k,Keywords [1]>>\n"); got != "link:/writing/keywords/#k[Keywords [1\\]]\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// <<doc#id>> names another page even without ".adoc"; <<id>> stays in the page.
+func TestRewriteCrossReferenceWithoutExtension(t *testing.T) {
+	if got, p := rewrite(t, "spec/en/index.adoc", "<<keywords#k,Keywords>> and <<k>>\n"); got != "link:/writing/keywords/#k[Keywords] and <<k>>\n" || len(p) != 0 {
+		t.Errorf("got %q, problems %v", got, p)
+	}
+}
+
+// "image:" inside a longer word is not an image macro.
+func TestRewriteImageWordBoundary(t *testing.T) {
+	in := "See myimage:x.svg[y].\n"
+	if got, p := rewrite(t, "spec/en/index.adoc", in); got != in || len(p) != 0 {
+		t.Errorf("got %q, problems %v", got, p)
+	}
+}
+
+// Pages in folders under spec/<lang>/ are pages too, and a reserved name is refused
+// as a folder as well.
+func TestRouteNestedSpecPage(t *testing.T) {
+	p, ok, err := Route("writing", "/writing", "spec/fr/annex/a.adoc")
+	if err != nil || !ok || p.URL != "/fr/writing/annex/a/" || otherLang(p) != "spec/en/annex/a.adoc" {
+		t.Fatalf("got %+v, %v, %v", p, ok, err)
+	}
+	if _, _, err := Route("writing", "/writing", "spec/en/guides/a.adoc"); err == nil {
+		t.Fatal("want an error for a reserved folder name")
+	}
+}
+
+// Comment lines before the title are not part of the page; the title still comes first.
+func TestCollectLeadingComment(t *testing.T) {
+	src := t.TempDir()
+	os.MkdirAll(filepath.Join(src, "spec/en"), 0o755)
+	os.WriteFile(filepath.Join(src, "spec/en/index.adoc"), []byte("// SPDX-License-Identifier: CC-BY-4.0\n////\nNote.\n////\n= Commented\n:toc:\n\nText.\n"), 0o644)
+	out := t.TempDir()
+	if err := Collect(Options{Spec: "x", Root: "/x", SrcDir: src, OutDir: out, Version: "0.1.0", DefaultDate: "2026-11-03", RepoURL: "u", SiteURL: "s"}); err != nil {
+		t.Fatal(err)
+	}
+	page := read(t, filepath.Join(out, "x/index.adoc"))
+	if !strings.HasPrefix(page, "= Commented\n:page-layout: spec\n") || !strings.Contains(page, "\n:toc:\n") ||
+		!strings.Contains(page, ":page-spec-title: Commented\n") || !strings.HasSuffix(page, "spec/en/index.adoc[lines=6..8]\n") {
+		t.Fatalf("page:\n%s", page)
+	}
+}
