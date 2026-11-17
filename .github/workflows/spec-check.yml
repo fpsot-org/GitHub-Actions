@@ -183,10 +183,10 @@ jobs:
         with:
           name: spec-html
           path: html
-      # iso.org, LégisQuébec, CanLII and merriam-webster.com answer 403 to automated
-      # readers, and www.canada.ca resets the connection from GitHub runners. Pages always
-      # pair these links with an archived copy, which is checked. The Wayback Machine
-      # throttles bursts: a 429 answer counts as reachable.
+      # iso.org, LégisQuébec, CanLII, Légifrance, oecd.org and merriam-webster.com
+      # answer 403 to automated readers, and www.canada.ca resets the connection from
+      # GitHub runners. Pages always pair these links with an archived copy, which is
+      # checked. The Wayback Machine throttles bursts: a 429 answer counts as reachable.
       - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: >-
@@ -196,6 +196,8 @@ jobs:
             --exclude '^https://(www\.)?merriam-webster\.com/'
             --exclude '^https://(www\.)?legisquebec\.gouv\.qc\.ca/'
             --exclude '^https://(www\.)?canlii\.org/'
+            --exclude '^https://(www\.)?legifrance\.gouv\.fr/'
+            --exclude '^https://(www\.)?oecd\.org/'
             --exclude '^https://www\.canada\.ca/'
             'html/**/*.html'
           fail: true
