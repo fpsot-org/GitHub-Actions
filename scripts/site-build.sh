@@ -78,10 +78,12 @@ check_repo_name() {
   fi
 }
 
-# Runs the Roq build of SITE_DIR into SITE_DIR/target/roq.
+# Runs the Roq build of SITE_DIR into SITE_DIR/target/roq. It removes target/ itself
+# instead of asking for Maven's clean goal: the builder image holds no clean plugin,
+# and Maven Central refuses (429) the downloads of many parallel CI jobs.
 roq_build() {
   # shellcheck disable=SC2086 # FPSOT_SITE_MAVEN_ARGS holds several options
-  (cd "$1" && QUARKUS_ROQ_GENERATOR_BATCH=true ${MVN:-mvn} -B -q ${FPSOT_SITE_MAVEN_ARGS:-} clean package quarkus:run)
+  (cd "$1" && rm -rf target && QUARKUS_ROQ_GENERATOR_BATCH=true ${MVN:-mvn} -B -q ${FPSOT_SITE_MAVEN_ARGS:-} package quarkus:run)
 }
 
 cmd=${1:?usage: site-build.sh specs|map|book|home|reduce ...}
