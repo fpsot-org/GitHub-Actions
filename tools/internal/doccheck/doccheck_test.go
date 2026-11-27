@@ -191,6 +191,18 @@ func TestReferencesCommitPinnedGitHub(t *testing.T) {
 	one(t, References([]string{filepath.Join(root, "spec/en/events.adoc")}), "archived copy")
 }
 
+func TestReferencesCommitPinnedRawGitHub(t *testing.T) {
+	pinned := "https://raw.githubusercontent.com/cloudevents/spec/fc1f6f31f5f011a72183f1bcea20c987cb683ade/cloudevents/spec.md"
+	branch := "https://raw.githubusercontent.com/cloudevents/spec/main/cloudevents/spec.md"
+	body := "= Events\n\nSee link:" + pinned + "[CloudEvents] and link:" + branch + "[CloudEvents].\n\n== References\n\n=== Normative\n\n* link:" + pinned + "[CloudEvents 1.0.2], CNCF, 2022-02.\n* link:" + branch + "[CloudEvents 1.0.2], CNCF, 2022-02.\n" + refHist
+	root := tree(t, map[string]string{"spec/en/events.adoc": body})
+	// The raw copy of a file at a full commit hash cannot change either; a branch can.
+	got := References([]string{filepath.Join(root, "spec/en/events.adoc")})
+	if len(got) != 1 || !strings.Contains(got[0].Msg, "archived copy") || got[0].Line != 10 {
+		t.Fatalf("want one archived-copy finding on the branch link (line 10), got %+v", got)
+	}
+}
+
 func TestReferencesURLMatching(t *testing.T) {
 	body := "= HTTP\n\nSee https://www.rfc-editor.org/info/rfc9110. Also (https://semver.org/spec/v2.0.0.html) and link:https://www.rfc-editor.org/rfc/rfc9110#section-9[section 9].\nSee xref:other.adoc[RFC 7396] and <<x,RFC 9457>>.\n\n== References\n\n=== Normative\n\n* link:https://www.rfc-editor.org/info/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/x[Archived copy]\n* link:https://semver.org/spec/v2.0.0.html[SemVer]. link:https://web.archive.org/web/1/y[Archived copy]\n* link:https://www.rfc-editor.org/rfc/rfc9110[RFC 9110], 2022-06. link:https://web.archive.org/web/1/z[Archived copy]\n\n== Document history\n\n|===\n|Version |Date |Change\n|0.1.0 |2026-11-02 |Follows RFC 8174 and https://example.org/x.\n|0.1.1 |2026-11-03 |See https://www.w3.org/TR/old/.\n|===\n"
 	root := tree(t, map[string]string{"spec/en/http.adoc": body})

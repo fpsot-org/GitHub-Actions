@@ -226,8 +226,8 @@ var (
 	linkMacro         = regexp.MustCompile(`(?:link:)?https?://[^\s\[\]]+\[[^\]]*\]`)
 	rfcMention        = regexp.MustCompile(`(?:\{abbr-rfc(?:-first)?\}|\bRFC) ?([0-9]{3,5})\b`)
 	// A GitHub file link pinned to a full commit hash cannot change: it is its own
-	// archived copy.
-	pinnedGitHub = regexp.MustCompile(`^https://github\.com/[^/]+/[^/]+/(?:blob|tree)/[0-9a-f]{40}/`)
+	// archived copy. So is the raw copy of that file, which link checkers can fetch.
+	pinnedGitHub = regexp.MustCompile(`^https://(?:github\.com/[^/]+/[^/]+/(?:blob|tree)/|raw\.githubusercontent\.com/[^/]+/[^/]+/)[0-9a-f]{40}/`)
 	sourceAttr   = regexp.MustCompile(`^\[(?:source)?[%#.\w-]*,\s*[\w+-]+`)
 	crossRef     = regexp.MustCompile(`xref:[^\s\[]*\[[^\]]*\]|<<[^>]*>>`)
 )
